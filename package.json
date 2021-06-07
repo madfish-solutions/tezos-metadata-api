@@ -1,0 +1,23 @@
+{
+  "name": "tezos-metadata-api",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Madfish.Solutions <info@madfish.solutions>",
+  "description": "Metadata API for Tezos-based tokens, supporting both FA1.2 and FA2 standards",
+  "license": "MIT",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@taquito/michel-codec": "^9.1.0",
+    "@taquito/taquito": "^9.1.0",
+    "@taquito/tzip12": "^9.1.0",
+    "@taquito/tzip16": "^9.1.0",
+    "body-parser": "^1.19.0",
+    "consola": "^2.15.3",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "lokijs": "^1.5.12",
+    "memoizee": "^0.4.15"
+  }
+}
