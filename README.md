@@ -16,6 +16,25 @@ The service can accept the following `ENV` variables:
 
 For default mainnet configuration, they might be left unchanged.
 
+# API
+The following endpoints are currently available:
+
+- `/healthz`
+
+```json
+{"message":"OK"}
+```
+
+- `/metadata/:address/:tokenId`, where `:address` is a token contract address (e.g. `KT1A5P4ejnLix13jtadsfV9GCnXLMNnab8UT`) and `:tokenId` is a token ID for FA2 or **always** `0` for FA1.2 tokens. Response is received in the following format:
+
+```json
+{
+  "decimals": 10,
+  "symbol": "KALAM",
+  "name": "Kalamint",
+  "thumbnailUri": "ipfs://Qme9FX9M7o2PZt9h6rvkUbfXoLpQr1HsuMQi6sL5Y75g3A"
+}
+```
 
 # Running the service
 - NodeJS and yarn:
