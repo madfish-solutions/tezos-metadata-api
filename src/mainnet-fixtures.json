@@ -1,0 +1,52 @@
+[
+  {
+    "tokenId": 0,
+    "contractAddress": "KT1K9gCRgaLRFKTErYt1wVxA3Frb9FjasjTV",
+    "metadata": {
+      "decimals": 18,
+      "symbol": "KUSD",
+      "name": "Kolibri",
+      "thumbnailUri": "https://kolibri-data.s3.amazonaws.com/logo.png"
+    }
+  },
+  {
+    "tokenId": 0,
+    "contractAddress": "KT1VYsVfmobT7rsMVivvZ4J8i3bPiqz12NaH",
+    "metadata": {
+      "decimals": 6,
+      "symbol": "wXTZ",
+      "name": "Wrapped Tezos",
+      "thumbnailUri": "https://raw.githubusercontent.com/StakerDAO/wrapped-xtz/dev/assets/wXTZ-token-FullColor.png"
+    }
+  },
+  {
+    "tokenId": 0,
+    "contractAddress": "KT1REEb5VxWRjcHm5GzDMwErMmNFftsE5Gpf",
+    "metadata": {
+      "decimals": 6,
+      "symbol": "USDS",
+      "name": "Stably USD",
+      "thumbnailUri": "https://quipuswap.com/tokens/stably.png"
+    }
+  },
+  {
+    "tokenId": 0,
+    "contractAddress": "KT1PWx2mnDueood7fEmfbBDKx1D9BAnnXitn",
+    "metadata": {
+      "decimals": 8,
+      "symbol": "tzBTC",
+      "name": "tzBTC",
+      "thumbnailUri": "https://tzbtc.io/wp-content/uploads/2020/03/tzbtc_logo_single.svg"
+    }
+  },
+  {
+    "tokenId": 0,
+    "contractAddress": "KT1AEfeckNbdEYwaMKkytBwPJPycz7jdSGea",
+    "metadata": {
+      "decimals": 18,
+      "symbol": "STKR",
+      "name": "Staker Governance Token",
+      "thumbnailUri": "https://github.com/StakerDAO/resources/raw/main/stkr.png"
+    }
+  }
+]

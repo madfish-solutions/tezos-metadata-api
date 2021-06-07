@@ -4,6 +4,7 @@ const consola = require("consola");
 const getMetadata = require("./metadata");
 const { port } = require("./config");
 const { isNumeric, isValidContract } = require("./utils");
+const fixtures = require("./mainnet-fixtures.json");
 
 const app = express();
 
@@ -25,7 +26,18 @@ app.get("/metadata/:address/:tokenId", async (req, res) => {
   }
 
   try {
-    res.send(await getMetadata(address, tokenId)).status(200);
+    const metadata = await getMetadata(address, tokenId);
+    const fixture = fixtures.find(
+      ({ tokenId: id, contractAddress }) =>
+        id === parseInt(tokenId) && contractAddress === address
+    );
+
+    res
+      .send({
+        ...metadata,
+        ...(fixture ? fixture.metadata : {}),
+      })
+      .status(200);
   } catch (e) {
     res
       .send({ message: "Could not fetch metadata for provided token" })
