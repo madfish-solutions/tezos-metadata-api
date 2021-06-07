@@ -48,5 +48,25 @@
       "name": "Staker Governance Token",
       "thumbnailUri": "https://github.com/StakerDAO/resources/raw/main/stkr.png"
     }
+  },
+  {
+    "tokenId": 0,
+    "contractAddress": "KT1LN4LPSqTMS7Sd2CJw4bbDGRkMv2t68Fy9",
+    "metadata": {
+      "decimals": 6,
+      "symbol": "USDtz",
+      "name": "USDtez",
+      "thumbnailUri": "https://usdtz.com/lightlogo10USDtz.png"
+    }
+  },
+  {
+    "tokenId": 0,
+    "contractAddress": "KT19at7rQUvyjxnZ2fBv7D9zc8rkyG7gAoU8",
+    "metadata": {
+      "decimals": 18,
+      "symbol": "ETHtz",
+      "name": "ETHtez",
+      "thumbnailUri": "https://ethtz.io/ETHtz_purple.png"
+    }
   }
 ]
