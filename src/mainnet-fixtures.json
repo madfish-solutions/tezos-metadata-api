@@ -68,5 +68,15 @@
       "name": "ETHtez",
       "thumbnailUri": "https://quipuswap.com/tokens/ethtz.png"
     }
+  },
+  {
+    "tokenId": 0,
+    "contractAddress": "KT1AxaBxkFLCUi3f8rdDAAxBKHfzY8LfKDRA",
+    "metadata": {
+      "decimals": 36,
+      "symbol": "QLkUSD",
+      "name": "Quipuswap Liquidating kUSD",
+      "thumbnailUri": "https://kolibri-data.s3.amazonaws.com/logo.png"
+    }
   }
 ]
