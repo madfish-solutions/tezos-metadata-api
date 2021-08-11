@@ -31,11 +31,15 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
   try {
     const contract = await getContractForMetadata(contractAddress);
 
-    const tzip12Data = await retry(async () => {
-      const data = await contract.tzip12().getTokenMetadata(tokenId);
-      assert("decimals" in data && ("name" in data || "symbol" in data));
-      return data;
-    }, RETRY_PARAMS);
+    const tzip12Data = await retry(
+      () => contract.tzip12().getTokenMetadata(tokenId),
+      RETRY_PARAMS
+    );
+
+    assert(
+      "decimals" in tzip12Data &&
+        ("name" in tzip12Data || "symbol" in tzip12Data)
+    );
 
     return {
       decimals: +tzip12Data.decimals,
