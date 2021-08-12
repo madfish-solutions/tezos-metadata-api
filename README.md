@@ -7,22 +7,23 @@ Metadata fetching algorithm relies on Taquito's [TZIP-12](https://tezostaquito.i
 
 The service can accept the following `ENV` variables:
 
-|  Variable  |  Default  | Description |
-|---|---|---|
-| `PORT`   | `3000`  | Expected server port |
-| `RPC_URL` |  `"https://mainnet-tezos.giganode.io/"` | RPC URL to be used |
-| `READ_ONLY_SIGNER_PK`  | `edpkvWbk81uh1DEvdWKR4g1bjyTGhdu1mDvznPUFE2zDwNsLXrEb9K` | Public key of account with balance used for dry-running |
-| `READ_ONLY_SIGNER_PK_HASH`  | `tz1fVQangAfb9J1hRRMP2bSB6LvASD6KpY8A` | Public key hash of account with balance used for dry-running |
+| Variable                   | Default                                                  | Description                                                  |
+| -------------------------- | -------------------------------------------------------- | ------------------------------------------------------------ |
+| `PORT`                     | `3000`                                                   | Expected server port                                         |
+| `RPC_URL`                  | `"https://mainnet-tezos.giganode.io/"`                   | RPC URL to be used                                           |
+| `READ_ONLY_SIGNER_PK`      | `edpkvWbk81uh1DEvdWKR4g1bjyTGhdu1mDvznPUFE2zDwNsLXrEb9K` | Public key of account with balance used for dry-running      |
+| `READ_ONLY_SIGNER_PK_HASH` | `tz1fVQangAfb9J1hRRMP2bSB6LvASD6KpY8A`                   | Public key hash of account with balance used for dry-running |
 
 For default mainnet configuration, they might be left unchanged.
 
 # API
+
 The following endpoints are currently available:
 
 - `/healthz`
 
 ```json
-{"message":"OK"}
+{ "message": "OK" }
 ```
 
 - `/metadata/:address/:tokenId`, where `:address` is a token contract address (e.g. `KT1A5P4ejnLix13jtadsfV9GCnXLMNnab8UT`) and `:tokenId` is a token ID for FA2 or **always** `0` for FA1.2 tokens. Response is received in the following format:
@@ -36,12 +37,46 @@ The following endpoints are currently available:
 }
 ```
 
+- [POST] `/`, where `body` structure looks like:
+
+### Request:
+
+```json
+[
+  "KT1VYsVfmobT7rsMVivvZ4J8i3bPiqz12NaH_0",
+  "KT1XPFjZqCULSnqfKaaYy8hJjeY63UNSGwXg_0"
+]
+```
+
+- is an array of token slugs: `"{{token_contract_address}}_{{token_id}}"` for tokens. For FA1.2 tokens `token_id` must be `0`.
+
+### Response:
+
+```json
+[
+  {
+    "decimals": 6,
+    "symbol": "wXTZ",
+    "name": "Wrapped Tezos"
+  },
+  {
+    "decimals": 8,
+    "symbol": "crDAO",
+    "name": "Crunchy DAO"
+  }
+]
+```
+
 # Running the service
+
 - NodeJS and yarn:
+
 ```bash
 yarn && yarn start
 ```
+
 - Docker:
+
 ```bash
 docker build -t tez-metadata .
 docker run -p 3000:3000 tez-metadata
