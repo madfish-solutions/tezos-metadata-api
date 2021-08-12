@@ -3,8 +3,7 @@ const cors = require("cors");
 const consola = require("consola");
 const getMetadata = require("./metadata");
 const { port } = require("./config");
-const { isNumeric, isValidContract } = require("./utils");
-const fixtures = require("./mainnet-fixtures.json");
+const { isNumeric, isValidContract, fromTokenSlug } = require("./utils");
 
 const app = express();
 
@@ -26,21 +25,49 @@ app.get("/metadata/:address/:tokenId", async (req, res) => {
   }
 
   try {
-    const metadata = await getMetadata(address, tokenId);
-    const fixture = fixtures.find(
-      ({ tokenId: id, contractAddress }) =>
-        id === parseInt(tokenId) && contractAddress === address
-    );
+    let metadata;
+    try {
+      metadata = await getMetadata(address, tokenId);
+    } catch {
+      metadata = {
+        decimals: 0,
+        symbol: address,
+        name: "Unknown Token",
+      };
+    }
 
-    res
-      .send({
-        ...metadata,
-        ...(fixture ? fixture.metadata : {}),
-      })
-      .status(200);
+    res.send(metadata).status(200);
   } catch (e) {
     res
       .send({ message: "Could not fetch metadata for provided token" })
+      .status(400);
+  }
+});
+
+app.post("/", async (req, res) => {
+  const promises = [];
+  try {
+    for (const slug of req.body) {
+      const { address, tokenId } = fromTokenSlug(slug);
+
+      if (!address || !isValidContract(address) || !isNumeric(tokenId)) {
+        consola.error(
+          `Validation failed for contract ${address} and tokenId:${tokenId}`
+        );
+        return res
+          .send({
+            message: "Please, provide a valid token address and token id",
+          })
+          .status(400);
+      }
+
+      promises.push(getMetadata(address, tokenId).catch(() => null));
+    }
+
+    res.json(await Promise.all(promises));
+  } catch (e) {
+    res
+      .send({ message: "Could not fetch metadata for provided tokens" })
       .status(400);
   }
 });
