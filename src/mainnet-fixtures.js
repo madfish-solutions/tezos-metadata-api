@@ -95,7 +95,7 @@ module.exports = new Map([
       decimals: 3,
       symbol: "SMAK",
       name: "SmartLink",
-      thumbnailUri: "ipfs://QmU2C4jU154nwA71AKHeiEj79qe7ZQC4Mf7AeUj5ALXZfe",
+      thumbnailUri: "https://quipuswap.com/tokens/smak.png",
     },
   ],
 ]);
