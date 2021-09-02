@@ -1,14 +1,29 @@
 const { TezosToolkit, MichelCodecPacker } = require("@taquito/taquito");
-const { Tzip16Module } = require("@taquito/tzip16");
+const {
+  Tzip16Module,
+  HttpHandler,
+  TezosStorageHandler,
+  IpfsHttpHandler,
+  MetadataProvider,
+} = require("@taquito/tzip16");
 const { Tzip12Module } = require("@taquito/tzip12");
 const LambdaViewSigner = require("./signer");
 const { rpcUrl } = require("./config");
 
 const michelEncoder = new MichelCodecPacker();
+const metadataProvider = new MetadataProvider(
+  new Map([
+    ["http", new HttpHandler()],
+    ["https", new HttpHandler()],
+    ["tezos-storage", new TezosStorageHandler()],
+    ["ipfs", new IpfsHttpHandler("cloudflare-ipfs.com")],
+  ])
+);
+
 const Tezos = new TezosToolkit(rpcUrl);
 
-Tezos.addExtension(new Tzip16Module());
-Tezos.addExtension(new Tzip12Module());
+Tezos.addExtension(new Tzip16Module(metadataProvider));
+Tezos.addExtension(new Tzip12Module(metadataProvider));
 Tezos.setSignerProvider(new LambdaViewSigner());
 Tezos.setPackerProvider(michelEncoder);
 
