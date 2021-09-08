@@ -19,6 +19,7 @@
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "lokijs": "^1.5.12",
-    "memoizee": "^0.4.15"
+    "memoizee": "^0.4.15",
+    "p-memoize": "^4.0.1"
   }
 }
