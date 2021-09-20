@@ -17,6 +17,7 @@ const RETRY_PARAMS = {
   maxTimeout: 100,
 };
 const ONE_WEEK_IN_SECONDS = 60 * 60 * 24 * 7;
+const FIVE_MIN_IN_SECONDS = 60 * 5;
 
 const getContractForMetadata = memoize((address) =>
   Tezos.contract.at(address, compose(tzip12, tzip16))
@@ -86,6 +87,12 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
     return result;
   } catch (err) {
     consola.error(err);
+
+    redis
+      .set(slug, JSON.stringify(null), "EX", FIVE_MIN_IN_SECONDS, "NX")
+      .catch((err) => {
+        console.warn("Failed to set cache", err);
+      });
 
     throw new NotFoundTokenMetadata();
   }
