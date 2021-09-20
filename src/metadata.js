@@ -8,6 +8,7 @@ const { tzip16 } = require("@taquito/tzip16");
 const BigNumber = require("bignumber.js");
 const fixtures = require("./mainnet-fixtures");
 const Tezos = require("./tezos");
+const redis = require("./redis");
 const { toTokenSlug, parseBoolean } = require("./utils");
 
 const RETRY_PARAMS = {
@@ -15,6 +16,7 @@ const RETRY_PARAMS = {
   minTimeout: 0,
   maxTimeout: 100,
 };
+const ONE_WEEK_IN_SECONDS = 60 * 60 * 24 * 7;
 
 const getContractForMetadata = memoize((address) =>
   Tezos.contract.at(address, compose(tzip12, tzip16))
@@ -25,6 +27,11 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
   if (fixtures.has(slug)) {
     return fixtures.get(slug);
   }
+
+  try {
+    const cached = await redis.get(slug);
+    if (cached) return JSON.parse(cached);
+  } catch {}
 
   // Flow based on Taquito TZIP-012 & TZIP-016 implementaion
   // and https://tzip.tezosagora.org/proposal/tzip-21
@@ -54,7 +61,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
       );
     } catch {}
 
-    return {
+    const result = {
       ...(tzip16Data?.assets?.[assetId] ?? {}),
       ...tzip12Data,
       decimals: +tzip12Data.decimals,
@@ -69,6 +76,14 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
         tzip12Data.iconUrl,
       artifactUri: tzip12Data.artifactUri,
     };
+
+    redis
+      .set(slug, JSON.stringify(result), "EX", ONE_WEEK_IN_SECONDS, "NX")
+      .catch((err) => {
+        console.warn("Failed to set cache", err);
+      });
+
+    return result;
   } catch (err) {
     consola.error(err);
 
@@ -83,6 +98,6 @@ class NotFoundTokenMetadata extends Error {
 
 module.exports = memoize(getTokenMetadata, {
   cacheKey: ([contractAddress, tokenId]) =>
-    `${contractAddress}_${new BigNumber(tokenId).toFixed()}`,
-  maxAge: 2 * 24 * 3_600 * 1_000, // 2 days
+    toTokenSlug(contractAddress, tokenId),
+  maxAge: 1_000 * 60 * 10, // 10 min
 });

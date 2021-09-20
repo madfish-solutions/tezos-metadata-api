@@ -1,4 +1,7 @@
 module.exports = {
+  baUsername: process.env.BA_USERNAME || "admin",
+  baPassword: process.env.BA_PASSWORD || "admin",
+  redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
   port: process.env.PORT || 3000,
   rpcUrl: process.env.RPC_URL || "https://rpc.tzbeta.net/",
   readOnlySignerPK:
