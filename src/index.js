@@ -1,17 +1,43 @@
 const express = require("express");
 const cors = require("cors");
+const basicAuth = require("express-basic-auth");
 const consola = require("consola");
 const getMetadata = require("./metadata");
-const { port } = require("./config");
-const { isNumeric, isValidContract, fromTokenSlug } = require("./utils");
+const { port, password } = require("./config");
+const {
+  isNumeric,
+  isValidContract,
+  fromTokenSlug,
+  toTokenSlug,
+} = require("./utils");
+const redis = require("./redis");
 
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: "1000kb" }));
+app.use(express.json({ limit: "2000kb" }));
 app.get("/healthz", (_, res) => {
   res.send({ message: "OK" }).status(200);
 });
+
+app.delete(
+  "/clear/:address/:tokenId",
+  basicAuth({
+    authorizer: (_u, p) => basicAuth.safeCompare(p, password),
+  }),
+  async (req, res) => {
+    const { address, tokenId } = req.params;
+    if (!address || !isValidContract(address) || !isNumeric(tokenId)) {
+      return res
+        .send({ message: "Please, provide a valid token address and token id" })
+        .status(400);
+    }
+
+    const tokenSlug = toTokenSlug(address, tokenId);
+    await redis.del(tokenSlug);
+    res.send("").status(200);
+  }
+);
 
 app.get("/metadata/:address/:tokenId", async (req, res) => {
   const { address, tokenId } = req.params;
