@@ -98,4 +98,12 @@ module.exports = new Map([
       thumbnailUri: "https://quipuswap.com/tokens/smak.png",
     },
   ],
+  [
+    "KT1TwzD6zV3WeJ39ukuqxcfK2fJCnhvrdN1X_0",
+    {
+      decimals: 0,
+      symbol: "LBT",
+      name: "LB Token",
+    },
+  ],
 ]);
