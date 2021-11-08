@@ -99,7 +99,7 @@ module.exports = new Map([
     },
   ],
   [
-    "KT1TwzD6zV3WeJ39ukuqxcfK2fJCnhvrdN1X_0",
+    "KT1AafHA1C1vk959wvHWBispY9Y2f3fxBUUo_0",
     {
       decimals: 0,
       symbol: "LBT",
