@@ -30,8 +30,15 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
   }
 
   try {
-    const cached = await redis.get(slug);
-    if (cached) return JSON.parse(cached);
+    const cachedStr = await redis.get(slug);
+    if (cachedStr) {
+      const cached = JSON.parse(cachedStr);
+      if (cached === null) {
+        throw new NotFoundTokenMetadata();
+      }
+
+      return cached;
+    }
   } catch {}
 
   // Flow based on Taquito TZIP-012 & TZIP-016 implementaion
