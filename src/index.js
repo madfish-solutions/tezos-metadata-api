@@ -33,9 +33,17 @@ app.delete(
         .status(400);
     }
 
-    const tokenSlug = toTokenSlug(address, tokenId);
-    await redis.del(tokenSlug);
-    res.send("").status(200);
+    try {
+      const tokenSlug = toTokenSlug(address, tokenId);
+      const deleted = await redis.del(tokenSlug);
+      res.send({ deleted }).status(200);
+    } catch (err) {
+      res
+        .send({
+          message: `Could not delete metadata for provided token: ${err.message}`,
+        })
+        .status(400);
+    }
   }
 );
 
