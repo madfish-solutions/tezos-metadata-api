@@ -29,17 +29,19 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
     return fixtures.get(slug);
   }
 
+  let cached; // : undefined | null | Metadata{}
   try {
     const cachedStr = await redis.get(slug);
-    if (cachedStr) {
-      const cached = JSON.parse(cachedStr);
-      if (cached === null) {
-        throw new NotFoundTokenMetadata();
-      }
-
-      return cached;
-    }
+    if (cachedStr) cached = JSON.parse(cachedStr);
   } catch {}
+
+  if (cached !== undefined) {
+    if (cached === null) {
+      throw new NotFoundTokenMetadata();
+    }
+
+    return cached;
+  }
 
   // Flow based on Taquito TZIP-012 & TZIP-016 implementaion
   // and https://tzip.tezosagora.org/proposal/tzip-21
