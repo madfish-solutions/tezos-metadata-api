@@ -3,7 +3,7 @@ const cors = require("cors");
 const basicAuth = require("express-basic-auth");
 const consola = require("consola");
 const getMetadata = require("./metadata");
-const { port, password } = require("./config");
+const { port, baPassword } = require("./config");
 const {
   isNumeric,
   isValidContract,
@@ -23,7 +23,7 @@ app.get("/healthz", (_, res) => {
 app.delete(
   "/clear/:address/:tokenId",
   basicAuth({
-    authorizer: (_u, p) => basicAuth.safeCompare(p, password),
+    authorizer: (_u, p) => basicAuth.safeCompare(p, baPassword),
   }),
   async (req, res) => {
     const { address, tokenId } = req.params;
@@ -33,9 +33,17 @@ app.delete(
         .status(400);
     }
 
-    const tokenSlug = toTokenSlug(address, tokenId);
-    await redis.del(tokenSlug);
-    res.send("").status(200);
+    try {
+      const tokenSlug = toTokenSlug(address, tokenId);
+      const deleted = await redis.del(tokenSlug);
+      res.send({ deleted }).status(200);
+    } catch (err) {
+      res
+        .send({
+          message: `Could not delete metadata for provided token: ${err.message}`,
+        })
+        .status(400);
+    }
   }
 );
 
