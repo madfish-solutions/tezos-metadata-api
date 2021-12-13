@@ -2,9 +2,9 @@ const assert = require("assert");
 const memoize = require("p-memoize");
 const retry = require("async-retry");
 const consola = require("consola");
-const { compose } = require("@taquito/taquito");
+const { compose, Context } = require("@taquito/taquito");
 const { tzip12 } = require("@taquito/tzip12");
-const { tzip16 } = require("@taquito/tzip16");
+const { tzip16, MetadataProvider, DEFAULT_HANDLERS } = require("@taquito/tzip16");
 const BigNumber = require("bignumber.js");
 const fixtures = require("./mainnet-fixtures");
 const Tezos = require("./tezos");
@@ -22,6 +22,46 @@ const FIVE_MIN_IN_SECONDS = 60 * 5;
 const getContractForMetadata = memoize((address) =>
   Tezos.contract.at(address, compose(tzip12, tzip16))
 );
+
+const getTzip12Metadata = async (contract, tokenId) => {
+  let tzip12Metadata = {};
+
+  try {
+    tzip12Metadata = await retry(() => contract.tzip12().getTokenMetadata(new BigNumber(tokenId).toFixed()), RETRY_PARAMS);
+  } catch {}
+
+  return tzip12Metadata;
+};
+
+const getTzip16Metadata = async (contract) => {
+  let tzip16Metadata = {};
+
+  try {
+    tzip16Metadata = await retry(() => contract.tzip16().getMetadata().then(({ metadata }) => metadata), RETRY_PARAMS);
+  } catch {}
+
+  return tzip16Metadata;
+};
+
+const metadataProvider = new MetadataProvider(DEFAULT_HANDLERS);
+const context = new Context(Tezos.rpc);
+
+const getMetadataFromUri = async (contract, tokenId) => {
+  let metadataFromUri = {};
+
+  try {
+    const storage = await contract.storage();
+    assert('token_metadata_uri' in storage);
+
+    const metadataUri = storage.token_metadata_uri.replace('{tokenId}', tokenId);
+
+    metadataFromUri = await metadataProvider
+      .provideMetadata(contract, metadataUri, context)
+      .then(({ metadata }) => metadata);
+  } catch {}
+
+  return metadataFromUri;
+};
 
 async function getTokenMetadata(contractAddress, tokenId = 0) {
   const slug = toTokenSlug(contractAddress, tokenId);
@@ -48,43 +88,32 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
   try {
     const contract = await getContractForMetadata(contractAddress);
 
-    const tzip12Data = await retry(
-      () =>
-        contract.tzip12().getTokenMetadata(new BigNumber(tokenId).toFixed()),
-      RETRY_PARAMS
-    );
+    const tzip12Metadata = await getTzip12Metadata(contract, tokenId);
+    const metadataFromUri = await getMetadataFromUri(contract, tokenId);
+
+    const rawMetadata = { ...metadataFromUri, ...tzip12Metadata };
 
     assert(
-      "decimals" in tzip12Data &&
-        ("name" in tzip12Data || "symbol" in tzip12Data)
+      "decimals" in rawMetadata &&
+      ("name" in rawMetadata || "symbol" in rawMetadata)
     );
 
-    let tzip16Data;
-    try {
-      tzip16Data = await retry(
-        () =>
-          contract
-            .tzip16()
-            .getMetadata()
-            .then(({ metadata }) => metadata),
-        RETRY_PARAMS
-      );
-    } catch {}
+    const tzip16Metadata = await getTzip16Metadata(contract);
 
     const result = {
-      ...(tzip16Data?.assets?.[assetId] ?? {}),
-      ...tzip12Data,
-      decimals: +tzip12Data.decimals,
-      symbol: tzip12Data.symbol || tzip12Data.name.substr(0, 8),
-      name: tzip12Data.name || tzip12Data.symbol,
-      shouldPreferSymbol: parseBoolean(tzip12Data.shouldPreferSymbol),
+      ...(tzip16Metadata?.assets?.[assetId] ?? {}),
+      ...rawMetadata,
+      decimals: +rawMetadata.decimals,
+      symbol: rawMetadata.symbol || rawMetadata.name.substr(0, 8),
+      name: rawMetadata.name || rawMetadata.symbol,
+      shouldPreferSymbol: parseBoolean(rawMetadata.shouldPreferSymbol),
       thumbnailUri:
-        tzip12Data.thumbnailUri ||
-        tzip12Data.logo ||
-        tzip12Data.icon ||
-        tzip12Data.iconUri ||
-        tzip12Data.iconUrl,
-      artifactUri: tzip12Data.artifactUri,
+        rawMetadata.thumbnailUri ||
+        rawMetadata.logo ||
+        rawMetadata.icon ||
+        rawMetadata.iconUri ||
+        rawMetadata.iconUrl,
+      artifactUri: rawMetadata.artifactUri,
     };
 
     redis
