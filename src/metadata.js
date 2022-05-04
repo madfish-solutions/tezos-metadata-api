@@ -4,7 +4,11 @@ const retry = require("async-retry");
 const consola = require("consola");
 const { compose, Context } = require("@taquito/taquito");
 const { tzip12 } = require("@taquito/tzip12");
-const { tzip16, MetadataProvider, DEFAULT_HANDLERS } = require("@taquito/tzip16");
+const {
+  tzip16,
+  MetadataProvider,
+  DEFAULT_HANDLERS,
+} = require("@taquito/tzip16");
 const BigNumber = require("bignumber.js");
 const fixtures = require("./mainnet-fixtures");
 const Tezos = require("./tezos");
@@ -27,7 +31,11 @@ const getTzip12Metadata = async (contract, tokenId) => {
   let tzip12Metadata = {};
 
   try {
-    tzip12Metadata = await retry(() => contract.tzip12().getTokenMetadata(new BigNumber(tokenId).toFixed()), RETRY_PARAMS);
+    tzip12Metadata = await retry(
+      () =>
+        contract.tzip12().getTokenMetadata(new BigNumber(tokenId).toFixed()),
+      RETRY_PARAMS
+    );
   } catch {}
 
   return tzip12Metadata;
@@ -37,7 +45,14 @@ const getTzip16Metadata = async (contract) => {
   let tzip16Metadata = {};
 
   try {
-    tzip16Metadata = await retry(() => contract.tzip16().getMetadata().then(({ metadata }) => metadata), RETRY_PARAMS);
+    tzip16Metadata = await retry(
+      () =>
+        contract
+          .tzip16()
+          .getMetadata()
+          .then(({ metadata }) => metadata),
+      RETRY_PARAMS
+    );
   } catch {}
 
   return tzip16Metadata;
@@ -51,9 +66,12 @@ const getMetadataFromUri = async (contract, tokenId) => {
 
   try {
     const storage = await contract.storage();
-    assert('token_metadata_uri' in storage);
+    assert("token_metadata_uri" in storage);
 
-    const metadataUri = storage.token_metadata_uri.replace('{tokenId}', tokenId);
+    const metadataUri = storage.token_metadata_uri.replace(
+      "{tokenId}",
+      tokenId
+    );
 
     metadataFromUri = await metadataProvider
       .provideMetadata(contract, metadataUri, context)
@@ -95,7 +113,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
     assert(
       "decimals" in rawMetadata &&
-      ("name" in rawMetadata || "symbol" in rawMetadata)
+        ("name" in rawMetadata || "symbol" in rawMetadata)
     );
 
     const tzip16Metadata = await getTzip16Metadata(contract);
@@ -109,6 +127,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
       shouldPreferSymbol: parseBoolean(rawMetadata.shouldPreferSymbol),
       thumbnailUri:
         rawMetadata.thumbnailUri ||
+        rawMetadata.thumbnail_uri ||
         rawMetadata.logo ||
         rawMetadata.icon ||
         rawMetadata.iconUri ||
