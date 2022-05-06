@@ -132,8 +132,8 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
         rawMetadata.icon ||
         rawMetadata.iconUri ||
         rawMetadata.iconUrl ||
-        rawMetadata.artifactUri ||
-        rawMetadata.displayUri,
+        rawMetadata.displayUri ||
+        rawMetadata.artifactUri,
       artifactUri: rawMetadata.artifactUri,
     };
 
