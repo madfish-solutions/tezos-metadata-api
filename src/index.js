@@ -3,7 +3,8 @@ const cors = require("cors");
 const basicAuth = require("express-basic-auth");
 const consola = require("consola");
 const getMetadata = require("./metadata");
-const { port, baPassword } = require("./config");
+const { port, baPassword, rpcUrl } = require("./config");
+const pjson = require("../package.json");
 const {
   isNumeric,
   isValidContract,
@@ -17,7 +18,7 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "2000kb" }));
 app.get("/healthz", (_, res) => {
-  res.send({ message: "OK" }).status(200);
+  res.send({ message: "OK", rpcUrl, version: pjson.version }).status(200);
 });
 
 app.delete(

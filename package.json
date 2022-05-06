@@ -1,6 +1,6 @@
 {
   "name": "tezos-metadata-api",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.js",
   "author": "Madfish.Solutions <info@madfish.solutions>",
   "description": "Metadata API for Tezos-based tokens, supporting both FA1.2 and FA2 standards",
