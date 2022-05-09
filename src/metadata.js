@@ -20,7 +20,7 @@ const RETRY_PARAMS = {
   minTimeout: 0,
   maxTimeout: 100,
 };
-const ONE_WEEK_IN_SECONDS = 60 * 5; // 60 * 5 * 24 * 7;
+const ONE_WEEK_IN_SECONDS = 60 * 5 * 24 * 7;
 const FIVE_MIN_IN_SECONDS = 60 * 5;
 
 const getContractForMetadata = memoize((address) =>
