@@ -10,10 +10,13 @@ const {
   DEFAULT_HANDLERS,
 } = require("@taquito/tzip16");
 const BigNumber = require("bignumber.js");
-const fixtures = require("./mainnet-fixtures");
+const mainnetFixtures = require("./mainnet-fixtures");
+const ithacanetFixtures = require("./ithacanet-fixtures");
 const Tezos = require("./tezos");
 const redis = require("./redis");
 const { toTokenSlug, parseBoolean } = require("./utils");
+const { network } = require("./config");
+const { MAINNET, ITHACANNET } = require("./constants");
 
 const RETRY_PARAMS = {
   retries: 2,
@@ -36,7 +39,7 @@ const getTzip12Metadata = async (contract, tokenId) => {
         contract.tzip12().getTokenMetadata(new BigNumber(tokenId).toFixed()),
       RETRY_PARAMS
     );
-  } catch {}
+  } catch { }
 
   return tzip12Metadata;
 };
@@ -53,7 +56,7 @@ const getTzip16Metadata = async (contract) => {
           .then(({ metadata }) => metadata),
       RETRY_PARAMS
     );
-  } catch {}
+  } catch { }
 
   return tzip16Metadata;
 };
@@ -76,22 +79,31 @@ const getMetadataFromUri = async (contract, tokenId) => {
     metadataFromUri = await metadataProvider
       .provideMetadata(contract, metadataUri, context)
       .then(({ metadata }) => metadata);
-  } catch {}
+  } catch { }
 
   return metadataFromUri;
 };
 
 async function getTokenMetadata(contractAddress, tokenId = 0) {
   const slug = toTokenSlug(contractAddress, tokenId);
-  if (fixtures.has(slug)) {
-    return fixtures.get(slug);
+
+  if (network === MAINNET) {
+    if (mainnetFixtures.has(slug)) {
+      return mainnetFixtures.get(slug);
+    }
+  }
+
+  if (network === ITHACANNET) {
+    if (ithacanetFixtures.has(slug)) {
+      return ithacanetFixtures.get(slug);
+    }
   }
 
   let cached; // : undefined | null | Metadata{}
   try {
     const cachedStr = await redis.get(slug);
     if (cachedStr) cached = JSON.parse(cachedStr);
-  } catch {}
+  } catch { }
 
   if (cached !== undefined) {
     if (cached === null) {
@@ -113,7 +125,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
     assert(
       "decimals" in rawMetadata &&
-        ("name" in rawMetadata || "symbol" in rawMetadata)
+      ("name" in rawMetadata || "symbol" in rawMetadata)
     );
 
     const tzip16Metadata = await getTzip16Metadata(contract);
