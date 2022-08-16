@@ -104,6 +104,7 @@ module.exports = new Map([
       decimals: 0,
       symbol: "SIRS",
       name: "Sirius",
+      thumbnailUri: "ipfs://QmNXQPkRACxaR17cht5ZWaaKiQy46qfCwNVT5FGZy6qnyp"
     },
   ],
 ]);
