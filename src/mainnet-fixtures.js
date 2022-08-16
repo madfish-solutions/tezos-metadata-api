@@ -102,8 +102,8 @@ module.exports = new Map([
     "KT1AafHA1C1vk959wvHWBispY9Y2f3fxBUUo_0",
     {
       decimals: 0,
-      symbol: "LBT",
-      name: "LB Token",
+      symbol: "SIRS",
+      name: "Sirius",
     },
   ],
 ]);
