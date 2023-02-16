@@ -14,7 +14,7 @@ const mainnetFixtures = require("./mainnet-fixtures");
 const ithacanetFixtures = require("./ithacanet-fixtures");
 const Tezos = require("./tezos");
 const redis = require("./redis");
-const { toTokenSlug, parseBoolean } = require("./utils");
+const { toTokenSlug, parseBoolean, getContractStandard } = require("./utils");
 const { network } = require("./config");
 const { MAINNET, ITHACANNET } = require("./constants");
 
@@ -105,18 +105,20 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
     if (cachedStr) cached = JSON.parse(cachedStr);
   } catch { }
 
-  if (cached !== undefined) {
-    if (cached === null) {
-      throw new NotFoundTokenMetadata();
-    }
+  // if (cached !== undefined) {
+  //   if (cached === null) {
+  //     throw new NotFoundTokenMetadata();
+  //   }
 
-    return cached;
-  }
+  //   return cached;
+  // }
 
   // Flow based on Taquito TZIP-012 & TZIP-016 implementaion
   // and https://tzip.tezosagora.org/proposal/tzip-21
   try {
     const contract = await getContractForMetadata(contractAddress);
+
+    const standard = getContractStandard(contract);
 
     const tzip12Metadata = await getTzip12Metadata(contract, tokenId);
     const metadataFromUri = await getMetadataFromUri(contract, tokenId);
@@ -147,6 +149,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
         rawMetadata.displayUri ||
         rawMetadata.artifactUri,
       artifactUri: rawMetadata.artifactUri,
+      standard
     };
 
     redis

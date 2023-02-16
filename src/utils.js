@@ -25,10 +25,21 @@ function parseBoolean(value) {
   if (value === "false") return false;
 }
 
+function getContractStandard(contract) {
+  if ('approve' in contract.methods) {
+    return 'fa12';
+  } else if ('update_operators' in contract.methods) {
+    return 'fa2';
+  }
+
+  return null;
+}
+
 module.exports = {
   isNumeric,
   isValidContract,
   toTokenSlug,
   fromTokenSlug,
   parseBoolean,
+  getContractStandard
 };
