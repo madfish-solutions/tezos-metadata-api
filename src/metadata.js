@@ -105,13 +105,13 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
     if (cachedStr) cached = JSON.parse(cachedStr);
   } catch { }
 
-  // if (cached !== undefined) {
-  //   if (cached === null) {
-  //     throw new NotFoundTokenMetadata();
-  //   }
+  if (cached !== undefined) {
+    if (cached === null) {
+      throw new NotFoundTokenMetadata();
+    }
 
-  //   return cached;
-  // }
+    return cached;
+  }
 
   // Flow based on Taquito TZIP-012 & TZIP-016 implementaion
   // and https://tzip.tezosagora.org/proposal/tzip-21
