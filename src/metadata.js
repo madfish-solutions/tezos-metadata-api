@@ -14,7 +14,7 @@ const mainnetFixtures = require("./mainnet-fixtures");
 const ithacanetFixtures = require("./ithacanet-fixtures");
 const Tezos = require("./tezos");
 const redis = require("./redis");
-const { toTokenSlug, parseBoolean } = require("./utils");
+const { toTokenSlug, parseBoolean, detectTokenStandard } = require("./utils");
 const { network } = require("./config");
 const { MAINNET, ITHACANNET } = require("./constants");
 
@@ -118,6 +118,8 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
   try {
     const contract = await getContractForMetadata(contractAddress);
 
+    const standard = detectTokenStandard(contract);
+
     const tzip12Metadata = await getTzip12Metadata(contract, tokenId);
     const metadataFromUri = await getMetadataFromUri(contract, tokenId);
 
@@ -147,6 +149,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
         rawMetadata.displayUri ||
         rawMetadata.artifactUri,
       artifactUri: rawMetadata.artifactUri,
+      standard
     };
 
     redis
