@@ -1,7 +1,5 @@
 const { validateContractAddress } = require("@taquito/utils");
 const BigNumber = require("bignumber.js");
-const Tezos = require("./tezos");
-const retry = require("async-retry");
 
 function isNumeric(str) {
   if (BigNumber.isBigNumber(str)) return true;
