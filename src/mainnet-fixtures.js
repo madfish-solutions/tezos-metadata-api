@@ -6,6 +6,7 @@ module.exports = new Map([
       symbol: "KUSD",
       name: "Kolibri",
       thumbnailUri: "https://kolibri-data.s3.amazonaws.com/logo.png",
+      standard: "fa12"
     },
   ],
   [
@@ -16,6 +17,7 @@ module.exports = new Map([
       name: "Wrapped Tezos",
       thumbnailUri:
         "https://raw.githubusercontent.com/StakerDAO/wrapped-xtz/dev/assets/wXTZ-token-FullColor.png",
+      standard: "fa12"
     },
   ],
   [
@@ -25,6 +27,7 @@ module.exports = new Map([
       symbol: "USDS",
       name: "Stably USD",
       thumbnailUri: "https://quipuswap.com/tokens/stably.png",
+      standard: "fa2"
     },
   ],
   [
@@ -35,6 +38,7 @@ module.exports = new Map([
       name: "tzBTC",
       thumbnailUri:
         "https://tzbtc.io/wp-content/uploads/2020/03/tzbtc_logo_single.svg",
+      standard: "fa12"
     },
   ],
   [
@@ -44,6 +48,7 @@ module.exports = new Map([
       symbol: "STKR",
       name: "Staker Governance Token",
       thumbnailUri: "https://github.com/StakerDAO/resources/raw/main/stkr.png",
+      standard: "fa12"
     },
   ],
   [
@@ -53,6 +58,7 @@ module.exports = new Map([
       symbol: "USDtz",
       name: "USDtez",
       thumbnailUri: "https://quipuswap.com/tokens/usdtz.png",
+      standard: "fa12"
     },
   ],
   [
@@ -62,6 +68,7 @@ module.exports = new Map([
       symbol: "ETHtz",
       name: "ETHtez",
       thumbnailUri: "https://quipuswap.com/tokens/ethtz.png",
+      standard: "fa12"
     },
   ],
   [
@@ -71,6 +78,7 @@ module.exports = new Map([
       symbol: "QLkUSD",
       name: "Quipuswap Liquidating kUSD",
       thumbnailUri: "https://kolibri-data.s3.amazonaws.com/logo.png",
+      standard: "fa12"
     },
   ],
   [
@@ -79,6 +87,7 @@ module.exports = new Map([
       decimals: 6,
       symbol: "XTZGold",
       name: "OroPocket Gold",
+      standard: "fa12"
     },
   ],
   [
@@ -87,6 +96,7 @@ module.exports = new Map([
       decimals: 6,
       symbol: "XTZSilver",
       name: "OroPocket Silver",
+      standard: "fa12"
     },
   ],
   [
@@ -96,6 +106,7 @@ module.exports = new Map([
       symbol: "SMAK",
       name: "SmartLink",
       thumbnailUri: "https://quipuswap.com/tokens/smak.png",
+      standard: "fa12"
     },
   ],
   [
@@ -104,7 +115,8 @@ module.exports = new Map([
       decimals: 0,
       symbol: "SIRS",
       name: "Sirius",
-      thumbnailUri: "ipfs://QmNXQPkRACxaR17cht5ZWaaKiQy46qfCwNVT5FGZy6qnyp"
+      thumbnailUri: "ipfs://QmNXQPkRACxaR17cht5ZWaaKiQy46qfCwNVT5FGZy6qnyp",
+      standard: "fa12"
     },
   ],
 ]);

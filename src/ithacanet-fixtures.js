@@ -6,6 +6,7 @@ module.exports = new Map([
       symbol: "tzBTC",
       name: "Test tzBTC",
       thumbnailUri: "https://tzbtc.io/wp-content/uploads/2020/03/tzbtc_logo_single.svg",
+      standard: "fa12"
     },
   ],
   [
@@ -14,7 +15,8 @@ module.exports = new Map([
       decimals: 12,
       symbol: "uBTC",
       name: "Test youves BTC",
-      thumbnailUri: "https://app.youves.com/assets/img/symbols/ubtc.svg"
+      thumbnailUri: "https://app.youves.com/assets/img/symbols/ubtc.svg",
+      standard: "fa2"
     },
   ],
   [
@@ -24,6 +26,7 @@ module.exports = new Map([
       symbol: "USDtz",
       name: "Test USDtez",
       thumbnailUri: "https://quipuswap.com/tokens/usdtz.png",
+      standard: "fa12"
     },
   ],
 ]);
