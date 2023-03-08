@@ -128,7 +128,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
       rawMetadata = { ...metadataFromUri, ...tzip12Metadata };
     } catch (err) {
-      console.warn('Looking for token_metadata off-chain view...');
+      consola.warn(`Looking for token_metadata off-chain view, contractAddress=${contractAddress}, tokenId=${tokenId}...`);
       const tzip16Metadata = await getTzip16Metadata(contract);
       const tokenMetadataView = tzip16Metadata?.views?.find(view => view.name === 'token_metadata');
       const implementation = tokenMetadataView?.implementations[0];
@@ -161,6 +161,11 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
       const { children } = bcdResponseData[0];
       const tokenInfo = children[1];
+
+      if (!tokenInfo) {
+        throw err;
+      }
+
       rawMetadata = Object.fromEntries(tokenInfo.children.map(({ name, value }) => [name, value]));
     }
 
