@@ -111,6 +111,9 @@ dist
 .vscode-test
 .idea
 
+# IDEs
+.vscode/
+
 # yarn v2
 .yarn/cache
 .yarn/unplugged
