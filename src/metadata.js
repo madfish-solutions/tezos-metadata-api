@@ -1,4 +1,5 @@
 const assert = require("assert");
+const axios = require("axios");
 const memoize = require("p-memoize");
 const retry = require("async-retry");
 const consola = require("consola");
@@ -120,10 +121,53 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
     const standard = detectTokenStandard(contract);
 
-    const tzip12Metadata = await getTzip12Metadata(contract, tokenId);
-    const metadataFromUri = await getMetadataFromUri(contract, tokenId);
+    let rawMetadata;
+    try {
+      const tzip12Metadata = await getTzip12Metadata(contract, tokenId);
+      const metadataFromUri = await getMetadataFromUri(contract, tokenId);
 
-    const rawMetadata = { ...metadataFromUri, ...tzip12Metadata };
+      rawMetadata = { ...metadataFromUri, ...tzip12Metadata };
+    } catch (err) {
+      consola.warn(`Looking for token_metadata off-chain view, contractAddress=${contractAddress}, tokenId=${tokenId}...`);
+      const tzip16Metadata = await getTzip16Metadata(contract);
+      const tokenMetadataView = tzip16Metadata?.views?.find(view => view.name === 'token_metadata');
+      const implementation = tokenMetadataView?.implementations[0];
+
+      if (!implementation) {
+        throw err;
+      }
+
+      console.warn('Trying to call token_metadata view via BCD...');
+      const bcdNetwork = network === ITHACANNET ? 'ghostnet' : network;
+      const { data: bcdResponseData } = await retry(
+        () => axios.post(
+          `https://api.better-call.dev/v1/contract/${bcdNetwork}/${contractAddress}/views/execute`,
+          {
+            data: {
+              '@nat_1': tokenId
+            },
+            implementation: 0,
+            kind: 'off-chain',
+            name: 'token_metadata',
+            view: implementation
+          }
+        ),
+        RETRY_PARAMS
+      );
+
+      if (!Array.isArray(bcdResponseData)) {
+        throw err;
+      }
+
+      const { children } = bcdResponseData[0];
+      const tokenInfo = children[1];
+
+      if (!tokenInfo) {
+        throw err;
+      }
+
+      rawMetadata = Object.fromEntries(tokenInfo.children.map(({ name, value }) => [name, value]));
+    }
 
     assert(
       "decimals" in rawMetadata &&
