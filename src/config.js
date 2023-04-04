@@ -13,4 +13,12 @@ module.exports = {
     process.env.READ_ONLY_SIGNER_PK_HASH ||
     "tz1fVQangAfb9J1hRRMP2bSB6LvASD6KpY8A",
   network: process.env.NETWORK || MAINNET,
+  s3AccessKeyId: process.env.S3_ACCESS_KEY_ID,
+  s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
+  s3Endpoint: process.env.S3_ENDPOINT || "https://fra1.digitaloceanspaces.com",
+  s3Region: process.env.S3_REGION || "us-east-1",
+  s3Bucket: process.env.S3_BUCKET || "metadata-storage",
+  s3CdnUrl:
+    process.env.S3_CDN_URL ||
+    "https://metadata-storage.fra1.cdn.digitaloceanspaces.com",
 };

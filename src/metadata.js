@@ -18,6 +18,7 @@ const redis = require("./redis");
 const { toTokenSlug, parseBoolean, detectTokenStandard } = require("./utils");
 const { network } = require("./config");
 const { MAINNET, ITHACANNET } = require("./constants");
+const { getOrUpdateCachedImage } = require("./image-cache");
 
 const RETRY_PARAMS = {
   retries: 2,
@@ -40,7 +41,7 @@ const getTzip12Metadata = async (contract, tokenId) => {
         contract.tzip12().getTokenMetadata(new BigNumber(tokenId).toFixed()),
       RETRY_PARAMS
     );
-  } catch { }
+  } catch {}
 
   return tzip12Metadata;
 };
@@ -57,7 +58,7 @@ const getTzip16Metadata = async (contract) => {
           .then(({ metadata }) => metadata),
       RETRY_PARAMS
     );
-  } catch { }
+  } catch {}
 
   return tzip16Metadata;
 };
@@ -80,35 +81,38 @@ const getMetadataFromUri = async (contract, tokenId) => {
     metadataFromUri = await metadataProvider
       .provideMetadata(contract, metadataUri, context)
       .then(({ metadata }) => metadata);
-  } catch { }
+  } catch {}
 
   return metadataFromUri;
 };
 
 const getTokenMetadataFromOffchainView = async (contract, tokenId) => {
   const tzip16Metadata = await getTzip16Metadata(contract);
-  const tokenMetadataView = tzip16Metadata?.views?.find(view => view.name === 'token_metadata');
+  const tokenMetadataView = tzip16Metadata?.views?.find(
+    (view) => view.name === "token_metadata"
+  );
   const implementation = tokenMetadataView?.implementations[0];
 
   if (!implementation) {
     return {};
   }
 
-  console.warn('Trying to call token_metadata view via BCD...');
-  const bcdNetwork = network === ITHACANNET ? 'ghostnet' : network;
+  console.warn("Trying to call token_metadata view via BCD...");
+  const bcdNetwork = network === ITHACANNET ? "ghostnet" : network;
   const { data: bcdResponseData } = await retry(
-    () => axios.post(
-      `https://api.better-call.dev/v1/contract/${bcdNetwork}/${contract.address}/views/execute`,
-      {
-        data: {
-          '@nat_1': tokenId
-        },
-        implementation: 0,
-        kind: 'off-chain',
-        name: 'token_metadata',
-        view: implementation
-      }
-    ),
+    () =>
+      axios.post(
+        `https://api.better-call.dev/v1/contract/${bcdNetwork}/${contract.address}/views/execute`,
+        {
+          data: {
+            "@nat_1": tokenId,
+          },
+          implementation: 0,
+          kind: "off-chain",
+          name: "token_metadata",
+          view: implementation,
+        }
+      ),
     RETRY_PARAMS
   );
 
@@ -123,7 +127,9 @@ const getTokenMetadataFromOffchainView = async (contract, tokenId) => {
     return {};
   }
 
-  return Object.fromEntries(tokenInfo.children.map(({ name, value }) => [name, value]));
+  return Object.fromEntries(
+    tokenInfo.children.map(({ name, value }) => [name, value])
+  );
 };
 
 async function getTokenMetadata(contractAddress, tokenId = 0) {
@@ -145,7 +151,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
   try {
     const cachedStr = await redis.get(slug);
     if (cachedStr) cached = JSON.parse(cachedStr);
-  } catch { }
+  } catch {}
 
   if (cached !== undefined) {
     if (cached === null) {
@@ -164,39 +170,45 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
     const tzip12Metadata = await getTzip12Metadata(contract, tokenId);
     const metadataFromUri = await getMetadataFromUri(contract, tokenId);
-    let rawMetadata =  { ...metadataFromUri, ...tzip12Metadata };
+    let rawMetadata = { ...metadataFromUri, ...tzip12Metadata };
 
     if (Object.keys(rawMetadata).length === 0) {
-      consola.warn(`Looking for token_metadata off-chain view, contractAddress=${contractAddress}, tokenId=${tokenId}...`);
+      consola.warn(
+        `Looking for token_metadata off-chain view, contractAddress=${contractAddress}, tokenId=${tokenId}...`
+      );
       rawMetadata = await getTokenMetadataFromOffchainView(contract, tokenId);
     }
 
     assert(
       "decimals" in rawMetadata &&
-      ("name" in rawMetadata || "symbol" in rawMetadata)
+        ("name" in rawMetadata || "symbol" in rawMetadata)
     );
 
     const tzip16Metadata = await getTzip16Metadata(contract);
 
-    const result = {
-      ...(tzip16Metadata?.assets?.[assetId] ?? {}),
-      ...rawMetadata,
-      decimals: +rawMetadata.decimals,
-      symbol: rawMetadata.symbol || rawMetadata.name.substr(0, 8),
-      name: rawMetadata.name || rawMetadata.symbol,
-      shouldPreferSymbol: parseBoolean(rawMetadata.shouldPreferSymbol),
-      thumbnailUri:
-        rawMetadata.thumbnailUri ||
-        rawMetadata.thumbnail_uri ||
-        rawMetadata.logo ||
-        rawMetadata.icon ||
-        rawMetadata.iconUri ||
-        rawMetadata.iconUrl ||
-        rawMetadata.displayUri ||
-        rawMetadata.artifactUri,
-      artifactUri: rawMetadata.artifactUri,
-      standard
-    };
+    const result = await applyImageCacheForDataUris(
+      {
+        ...(tzip16Metadata?.assets?.[assetId] ?? {}),
+        ...rawMetadata,
+        decimals: +rawMetadata.decimals,
+        symbol: rawMetadata.symbol || rawMetadata.name.substr(0, 8),
+        name: rawMetadata.name || rawMetadata.symbol,
+        shouldPreferSymbol: parseBoolean(rawMetadata.shouldPreferSymbol),
+        displayUri: rawMetadata.displayUri,
+        thumbnailUri:
+          rawMetadata.thumbnailUri ||
+          rawMetadata.thumbnail_uri ||
+          rawMetadata.logo ||
+          rawMetadata.icon ||
+          rawMetadata.iconUri ||
+          rawMetadata.iconUrl ||
+          rawMetadata.displayUri ||
+          rawMetadata.artifactUri,
+        artifactUri: rawMetadata.artifactUri,
+        standard,
+      },
+      slug
+    );
 
     redis
       .set(slug, JSON.stringify(result), "EX", ONE_WEEK_IN_SECONDS, "NX")
@@ -216,6 +228,24 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
     throw new NotFoundTokenMetadata();
   }
+}
+
+async function applyImageCacheForDataUris(metadata, slug) {
+  return {
+    ...metadata,
+    thumbnailUri: await getOrUpdateCachedImage(
+      metadata.thumbnailUri,
+      `${slug}_thumbnail`
+    ),
+    artifactUri: await getOrUpdateCachedImage(
+      metadata.artifactUri,
+      `${slug}_artifact`
+    ),
+    displayUri: await getOrUpdateCachedImage(
+      metadata.displayUri,
+      `${slug}_display`
+    ),
+  };
 }
 
 class NotFoundTokenMetadata extends Error {
