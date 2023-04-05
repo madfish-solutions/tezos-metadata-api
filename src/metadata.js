@@ -41,7 +41,7 @@ const getTzip12Metadata = async (contract, tokenId) => {
         contract.tzip12().getTokenMetadata(new BigNumber(tokenId).toFixed()),
       RETRY_PARAMS
     );
-  } catch {}
+  } catch { }
 
   return tzip12Metadata;
 };
@@ -58,7 +58,7 @@ const getTzip16Metadata = async (contract) => {
           .then(({ metadata }) => metadata),
       RETRY_PARAMS
     );
-  } catch {}
+  } catch { }
 
   return tzip16Metadata;
 };
@@ -81,38 +81,35 @@ const getMetadataFromUri = async (contract, tokenId) => {
     metadataFromUri = await metadataProvider
       .provideMetadata(contract, metadataUri, context)
       .then(({ metadata }) => metadata);
-  } catch {}
+  } catch { }
 
   return metadataFromUri;
 };
 
 const getTokenMetadataFromOffchainView = async (contract, tokenId) => {
   const tzip16Metadata = await getTzip16Metadata(contract);
-  const tokenMetadataView = tzip16Metadata?.views?.find(
-    (view) => view.name === "token_metadata"
-  );
+  const tokenMetadataView = tzip16Metadata?.views?.find((view) => view.name === 'token_metadata');
   const implementation = tokenMetadataView?.implementations[0];
 
   if (!implementation) {
     return {};
   }
 
-  console.warn("Trying to call token_metadata view via BCD...");
-  const bcdNetwork = network === ITHACANNET ? "ghostnet" : network;
+  console.warn('Trying to call token_metadata view via BCD...');
+  const bcdNetwork = network === ITHACANNET ? 'ghostnet' : network;
   const { data: bcdResponseData } = await retry(
-    () =>
-      axios.post(
-        `https://api.better-call.dev/v1/contract/${bcdNetwork}/${contract.address}/views/execute`,
-        {
-          data: {
-            "@nat_1": tokenId,
-          },
-          implementation: 0,
-          kind: "off-chain",
-          name: "token_metadata",
-          view: implementation,
-        }
-      ),
+    () => axios.post(
+      `https://api.better-call.dev/v1/contract/${bcdNetwork}/${contract.address}/views/execute`,
+      {
+        data: {
+          '@nat_1': tokenId
+        },
+        implementation: 0,
+        kind: 'off-chain',
+        name: 'token_metadata',
+        view: implementation
+      }
+    ),
     RETRY_PARAMS
   );
 
@@ -127,9 +124,7 @@ const getTokenMetadataFromOffchainView = async (contract, tokenId) => {
     return {};
   }
 
-  return Object.fromEntries(
-    tokenInfo.children.map(({ name, value }) => [name, value])
-  );
+  return Object.fromEntries(tokenInfo.children.map(({ name, value }) => [name, value]));
 };
 
 async function getTokenMetadata(contractAddress, tokenId = 0) {
@@ -181,7 +176,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
     assert(
       "decimals" in rawMetadata &&
-        ("name" in rawMetadata || "symbol" in rawMetadata)
+      ("name" in rawMetadata || "symbol" in rawMetadata)
     );
 
     const tzip16Metadata = await getTzip16Metadata(contract);

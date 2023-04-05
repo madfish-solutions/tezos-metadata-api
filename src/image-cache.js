@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const dataUriToBuffer = require("data-uri-to-buffer");
 const {
   S3Client,
   PutObjectCommand,
@@ -21,10 +22,13 @@ async function getOrUpdateCachedImage(uri, tag) {
     return uri;
   }
 
-  const dataUriToBuffer = (await import("data-uri-to-buffer")).default;
   const buffer = await dataUriToBuffer(uri);
   const hash = crypto.createHash("sha256").update(buffer).digest("hex");
   const fileExtension = getSupportedExtensionFromMime(buffer.type);
+  if (!fileExtension) {
+    return undefined;
+  }
+
   const key = `${hash}.${fileExtension}`;
 
   try {
@@ -36,18 +40,27 @@ async function getOrUpdateCachedImage(uri, tag) {
     ); // check if the file already exists
 
     return getCdnUrl(key);
-  } catch (err) {}
+  } catch (err) {
+    if (err.$metadata.httpStatusCode !== 404) {
+      console.error("Cached image existance check failed", err);
+    }
+  }
 
-  await client.send(
-    new PutObjectCommand({
-      Bucket: config.s3Bucket,
-      Key: key,
-      Body: buffer,
-      ContentType: buffer.type,
-      ACL: "public-read",
-      Tagging: `tag=${tag}`,
-    })
-  );
+  try {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: config.s3Bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: buffer.type,
+        ACL: "public-read",
+        Tagging: `tag=${tag}`,
+      })
+    );
+  } catch (err) {
+    console.error("Failed to upload image to S3", err);
+    return undefined;
+  }
 
   return getCdnUrl(key);
 }
@@ -66,10 +79,6 @@ function getSupportedExtensionFromMime(mimeType) {
       return "gif";
     case "image/svg+xml":
       return "svg";
-    default:
-      throw new Error(
-        `Cannot retrieve file extension from mime type ${mimeType}`
-      );
   }
 }
 
