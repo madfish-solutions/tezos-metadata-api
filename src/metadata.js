@@ -88,7 +88,7 @@ const getMetadataFromUri = async (contract, tokenId) => {
 
 const getTokenMetadataFromOffchainView = async (contract, tokenId) => {
   const tzip16Metadata = await getTzip16Metadata(contract);
-  const tokenMetadataView = tzip16Metadata?.views?.find((view) => view.name === 'token_metadata');
+  const tokenMetadataView = tzip16Metadata?.views?.find(view => view.name === 'token_metadata');
   const implementation = tokenMetadataView?.implementations[0];
 
   if (!implementation) {
@@ -146,7 +146,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
   try {
     const cachedStr = await redis.get(slug);
     if (cachedStr) cached = JSON.parse(cachedStr);
-  } catch {}
+  } catch { }
 
   if (cached !== undefined) {
     if (cached === null) {
@@ -168,9 +168,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
     let rawMetadata = { ...metadataFromUri, ...tzip12Metadata };
 
     if (Object.keys(rawMetadata).length === 0) {
-      consola.warn(
-        `Looking for token_metadata off-chain view, contractAddress=${contractAddress}, tokenId=${tokenId}...`
-      );
+      consola.warn(`Looking for token_metadata off-chain view, contractAddress=${contractAddress}, tokenId=${tokenId}...`);
       rawMetadata = await getTokenMetadataFromOffchainView(contract, tokenId);
     }
 
