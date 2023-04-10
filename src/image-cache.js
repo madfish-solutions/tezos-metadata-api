@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const sharp = require("sharp");
 const dataUriToBuffer = require("data-uri-to-buffer");
 const {
   S3Client,
@@ -22,7 +23,17 @@ async function getOrUpdateCachedImage(uri, tag) {
     return uri;
   }
 
-  const buffer = await dataUriToBuffer(uri);
+  let buffer = await dataUriToBuffer(uri);
+  if (buffer.type === "image/svg+xml") {
+    try {
+      buffer = await sharp(buffer).png().toBuffer();
+      buffer.type = "image/png";
+    } catch (err) {
+      console.error("Failed to convert SVG to PNG", err);
+      return undefined;
+    }
+  }
+
   const hash = crypto.createHash("sha256").update(buffer).digest("hex");
   const fileExtension = getSupportedExtensionFromMime(buffer.type);
   if (!fileExtension) {
