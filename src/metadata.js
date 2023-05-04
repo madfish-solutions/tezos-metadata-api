@@ -3,7 +3,7 @@ const axios = require("axios");
 const memoize = require("p-memoize");
 const retry = require("async-retry");
 const consola = require("consola");
-const { compose, Context } = require("@taquito/taquito");
+const { compose, Context, ChainIds } = require("@taquito/taquito");
 const { tzip12 } = require("@taquito/tzip12");
 const {
   tzip16,
@@ -11,13 +11,10 @@ const {
   DEFAULT_HANDLERS,
 } = require("@taquito/tzip16");
 const BigNumber = require("bignumber.js");
-const mainnetFixtures = require("./mainnet-fixtures");
-const ithacanetFixtures = require("./ithacanet-fixtures");
+const FIXTURES = require("./fixtures");
 const { Tezos } = require("./tezos");
 const redis = require("./redis");
 const { toTokenSlug, parseBoolean, detectTokenStandard } = require("./utils");
-const { network } = require("./config");
-const { MAINNET, ITHACANNET } = require("./constants");
 const { getOrUpdateCachedImage } = require("./image-cache");
 
 const RETRY_PARAMS = {
@@ -28,7 +25,7 @@ const RETRY_PARAMS = {
 const ONE_WEEK_IN_SECONDS = 60 * 5 * 24 * 7;
 const FIVE_MIN_IN_SECONDS = 60 * 5;
 
-const getContractForMetadata = memoize((address, tezos = Tezos) =>
+const getContractForMetadata = memoize((address, tezos) =>
   tezos.contract.at(address, compose(tzip12, tzip16))
 );
 
@@ -64,12 +61,11 @@ const getTzip16Metadata = async (contract) => {
 };
 
 const metadataProvider = new MetadataProvider(DEFAULT_HANDLERS);
-const mainContext = new Context(Tezos.rpc);
 
 const getMetadataFromUri = async (contract, tokenId, tezos) => {
   let metadataFromUri = {};
 
-  const context = tezos ? new Context(tezos.rpc) : mainContext;
+  const context = new Context(tezos.rpc);
   try {
     const storage = await contract.storage();
     assert("token_metadata_uri" in storage);
@@ -87,17 +83,24 @@ const getMetadataFromUri = async (contract, tokenId, tezos) => {
   return metadataFromUri;
 };
 
-const getTokenMetadataFromOffchainView = async (contract, tokenId) => {
+const getBCDNetwork = (chainId) => {
+  if (chainId === ChainIds.MAINNET) return 'mainnet';
+
+  if (chainId === ChainIds.ITHACANET || chainId === ChainIds.ITHACANET2) return 'ghostnet';
+};
+
+const getTokenMetadataFromOffchainView = async (contract, tokenId, chainId) => {
+  const bcdNetwork = getBCDNetwork(chainId);
+
+  if (!bcdNetwork) return {};
+
   const tzip16Metadata = await getTzip16Metadata(contract);
   const tokenMetadataView = tzip16Metadata?.views?.find(view => view.name === 'token_metadata');
   const implementation = tokenMetadataView?.implementations[0];
 
-  if (!implementation) {
-    return {};
-  }
+  if (!implementation) return {};
 
   console.warn('Trying to call token_metadata view via BCD...');
-  const bcdNetwork = network === ITHACANNET ? 'ghostnet' : network;
   const { data: bcdResponseData } = await retry(
     () => axios.post(
       `https://api.better-call.dev/v1/contract/${bcdNetwork}/${contract.address}/views/execute`,
@@ -114,16 +117,12 @@ const getTokenMetadataFromOffchainView = async (contract, tokenId) => {
     RETRY_PARAMS
   );
 
-  if (!Array.isArray(bcdResponseData)) {
-    return {};
-  }
+  if (!Array.isArray(bcdResponseData)) return {};
 
   const { children } = bcdResponseData[0];
   const tokenInfo = children[1];
 
-  if (!tokenInfo) {
-    return {};
-  }
+  if (!tokenInfo) return {};
 
   return Object.fromEntries(tokenInfo.children.map(({ name, value }) => [name, value]));
 };
@@ -131,17 +130,8 @@ const getTokenMetadataFromOffchainView = async (contract, tokenId) => {
 async function getTokenMetadata(contractAddress, tokenId = 0, options) {
   const slug = toTokenSlug(contractAddress, tokenId);
 
-  if (network === MAINNET) {
-    if (mainnetFixtures.has(slug)) {
-      return mainnetFixtures.get(slug);
-    }
-  }
-
-  if (network === ITHACANNET) {
-    if (ithacanetFixtures.has(slug)) {
-      return ithacanetFixtures.get(slug);
-    }
-  }
+  const predefined = FIXTURES[slug];
+  if (predefined) return predefined;
 
   let cached; // : undefined | null | Metadata{}
   try {
@@ -157,20 +147,23 @@ async function getTokenMetadata(contractAddress, tokenId = 0, options) {
     return cached;
   }
 
+  const tezos = options?.tezos || Tezos;
+
   // Flow based on Taquito TZIP-012 & TZIP-016 implementaion
   // and https://tzip.tezosagora.org/proposal/tzip-21
   try {
-    const contract = await getContractForMetadata(contractAddress, options?.tezos);
+    const contract = await getContractForMetadata(contractAddress, tezos);
 
     const standard = detectTokenStandard(contract);
 
     const tzip12Metadata = await getTzip12Metadata(contract, tokenId);
-    const metadataFromUri = await getMetadataFromUri(contract, tokenId, options?.tezos);
+    const metadataFromUri = await getMetadataFromUri(contract, tokenId, tezos);
     let rawMetadata = { ...metadataFromUri, ...tzip12Metadata };
 
     if (Object.keys(rawMetadata).length === 0) {
       consola.warn(`Looking for token_metadata off-chain view, contractAddress=${contractAddress}, tokenId=${tokenId}...`);
-      rawMetadata = await getTokenMetadataFromOffchainView(contract, tokenId);
+      const chainId = await tezos.rpc.getChainId();
+      rawMetadata = await getTokenMetadataFromOffchainView(contract, tokenId, chainId);
     }
 
     assert(
