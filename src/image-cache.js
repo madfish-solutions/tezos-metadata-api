@@ -30,14 +30,14 @@ async function getOrUpdateCachedImage(uri, tag) {
       buffer.type = "image/png";
     } catch (err) {
       console.error("Failed to convert SVG to PNG", err);
-      return undefined;
+      return uri.slice(0, 100);
     }
   }
 
   const hash = crypto.createHash("sha256").update(buffer).digest("hex");
   const fileExtension = getSupportedExtensionFromMime(buffer.type);
   if (!fileExtension) {
-    return undefined;
+    return uri.slice(0, 100);
   }
 
   const key = `${hash}.${fileExtension}`;
@@ -70,7 +70,7 @@ async function getOrUpdateCachedImage(uri, tag) {
     );
   } catch (err) {
     console.error("Failed to upload image to S3", err);
-    return undefined;
+    return uri.slice(0, 100);
   }
 
   return getCdnUrl(key);
