@@ -1,3 +1,4 @@
+const { TezosToolkit } = require("@taquito/taquito");
 const express = require("express");
 const cors = require("cors");
 const basicAuth = require("express-basic-auth");
@@ -12,6 +13,7 @@ const {
   toTokenSlug,
 } = require("./utils");
 const redis = require("./redis");
+const { Tezos, buildTezos } = require("./tezos");
 
 const app = express();
 
@@ -50,6 +52,8 @@ app.delete(
 
 app.get("/metadata/:address/:tokenId", async (req, res) => {
   const { address, tokenId } = req.params;
+  const rpcUrl = req.query.rpcUrl;
+
   if (!address || !isValidContract(address) || !isNumeric(tokenId)) {
     consola.error(
       `Validation failed for contract ${address} and tokenId:${tokenId}`
@@ -60,9 +64,11 @@ app.get("/metadata/:address/:tokenId", async (req, res) => {
   }
 
   try {
+    const options = await buildGetMetadataOptions(rpcUrl);
+
     let metadata;
     try {
-      metadata = await getMetadata(address, tokenId);
+      metadata = await getMetadata(address, tokenId, options);
     } catch {
       metadata = {
         decimals: 0,
@@ -80,8 +86,12 @@ app.get("/metadata/:address/:tokenId", async (req, res) => {
 });
 
 app.post("/", async (req, res) => {
+  const rpcUrl = req.query.rpcUrl;
+
   const promises = [];
   try {
+    const options = await buildGetMetadataOptions(rpcUrl);
+
     for (const slug of req.body) {
       const { address, tokenId } = fromTokenSlug(slug);
 
@@ -96,7 +106,7 @@ app.post("/", async (req, res) => {
           .status(400);
       }
 
-      promises.push(getMetadata(address, tokenId).catch(() => null));
+      promises.push(getMetadata(address, tokenId, options).catch(() => null));
     }
 
     res.json(await Promise.all(promises));
@@ -106,6 +116,16 @@ app.post("/", async (req, res) => {
       .status(400);
   }
 });
+
+const buildGetMetadataOptions = async (rpcUrl) => {
+  if (!rpcUrl) return;
+
+  const tezos = buildTezos(rpcUrl);
+  const chainId = await tezos.rpc.getChainId();
+  const mainChainId = await Tezos.rpc.getChainId();
+
+  if (chainId != mainChainId) return { chainId, tezos };
+};
 
 app.listen(port, () =>
   consola.success(`Tezos token metadata server is listening on port ${port}`)

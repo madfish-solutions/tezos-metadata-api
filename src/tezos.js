@@ -20,11 +20,17 @@ const metadataProvider = new MetadataProvider(
   ])
 );
 
-const Tezos = new TezosToolkit(rpcUrl);
+const buildTezos = (rpcUrl) => {
+  const tezos = new TezosToolkit(rpcUrl);
 
-Tezos.addExtension(new Tzip16Module(metadataProvider));
-Tezos.addExtension(new Tzip12Module(metadataProvider));
-Tezos.setSignerProvider(new LambdaViewSigner());
-Tezos.setPackerProvider(michelEncoder);
+  tezos.addExtension(new Tzip16Module(metadataProvider));
+  tezos.addExtension(new Tzip12Module(metadataProvider));
+  tezos.setSignerProvider(new LambdaViewSigner());
+  tezos.setPackerProvider(michelEncoder);
 
-module.exports = Tezos;
+  return tezos;
+};
+
+const Tezos = buildTezos(rpcUrl);
+
+module.exports = { Tezos, buildTezos };
