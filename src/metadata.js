@@ -1,4 +1,5 @@
 const assert = require("assert");
+const axios = require("axios");
 const memoize = require("p-memoize");
 const retry = require("async-retry");
 const consola = require("consola");
@@ -14,9 +15,10 @@ const mainnetFixtures = require("./mainnet-fixtures");
 const ithacanetFixtures = require("./ithacanet-fixtures");
 const Tezos = require("./tezos");
 const redis = require("./redis");
-const { toTokenSlug, parseBoolean } = require("./utils");
+const { toTokenSlug, parseBoolean, detectTokenStandard } = require("./utils");
 const { network } = require("./config");
 const { MAINNET, ITHACANNET } = require("./constants");
+const { getOrUpdateCachedImage } = require("./image-cache");
 
 const RETRY_PARAMS = {
   retries: 2,
@@ -84,6 +86,47 @@ const getMetadataFromUri = async (contract, tokenId) => {
   return metadataFromUri;
 };
 
+const getTokenMetadataFromOffchainView = async (contract, tokenId) => {
+  const tzip16Metadata = await getTzip16Metadata(contract);
+  const tokenMetadataView = tzip16Metadata?.views?.find(view => view.name === 'token_metadata');
+  const implementation = tokenMetadataView?.implementations[0];
+
+  if (!implementation) {
+    return {};
+  }
+
+  console.warn('Trying to call token_metadata view via BCD...');
+  const bcdNetwork = network === ITHACANNET ? 'ghostnet' : network;
+  const { data: bcdResponseData } = await retry(
+    () => axios.post(
+      `https://api.better-call.dev/v1/contract/${bcdNetwork}/${contract.address}/views/execute`,
+      {
+        data: {
+          '@nat_1': tokenId
+        },
+        implementation: 0,
+        kind: 'off-chain',
+        name: 'token_metadata',
+        view: implementation
+      }
+    ),
+    RETRY_PARAMS
+  );
+
+  if (!Array.isArray(bcdResponseData)) {
+    return {};
+  }
+
+  const { children } = bcdResponseData[0];
+  const tokenInfo = children[1];
+
+  if (!tokenInfo) {
+    return {};
+  }
+
+  return Object.fromEntries(tokenInfo.children.map(({ name, value }) => [name, value]));
+};
+
 async function getTokenMetadata(contractAddress, tokenId = 0) {
   const slug = toTokenSlug(contractAddress, tokenId);
 
@@ -118,10 +161,16 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
   try {
     const contract = await getContractForMetadata(contractAddress);
 
+    const standard = detectTokenStandard(contract);
+
     const tzip12Metadata = await getTzip12Metadata(contract, tokenId);
     const metadataFromUri = await getMetadataFromUri(contract, tokenId);
+    let rawMetadata = { ...metadataFromUri, ...tzip12Metadata };
 
-    const rawMetadata = { ...metadataFromUri, ...tzip12Metadata };
+    if (Object.keys(rawMetadata).length === 0) {
+      consola.warn(`Looking for token_metadata off-chain view, contractAddress=${contractAddress}, tokenId=${tokenId}...`);
+      rawMetadata = await getTokenMetadataFromOffchainView(contract, tokenId);
+    }
 
     assert(
       "decimals" in rawMetadata &&
@@ -130,24 +179,29 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
     const tzip16Metadata = await getTzip16Metadata(contract);
 
-    const result = {
-      ...(tzip16Metadata?.assets?.[assetId] ?? {}),
-      ...rawMetadata,
-      decimals: +rawMetadata.decimals,
-      symbol: rawMetadata.symbol || rawMetadata.name.substr(0, 8),
-      name: rawMetadata.name || rawMetadata.symbol,
-      shouldPreferSymbol: parseBoolean(rawMetadata.shouldPreferSymbol),
-      thumbnailUri:
-        rawMetadata.thumbnailUri ||
-        rawMetadata.thumbnail_uri ||
-        rawMetadata.logo ||
-        rawMetadata.icon ||
-        rawMetadata.iconUri ||
-        rawMetadata.iconUrl ||
-        rawMetadata.displayUri ||
-        rawMetadata.artifactUri,
-      artifactUri: rawMetadata.artifactUri,
-    };
+    const result = await applyImageCacheForDataUris(
+      {
+        ...(tzip16Metadata?.assets?.[assetId] ?? {}),
+        ...rawMetadata,
+        decimals: +rawMetadata.decimals,
+        symbol: rawMetadata.symbol || rawMetadata.name.substr(0, 8),
+        name: rawMetadata.name || rawMetadata.symbol,
+        shouldPreferSymbol: parseBoolean(rawMetadata.shouldPreferSymbol),
+        displayUri: rawMetadata.displayUri,
+        thumbnailUri:
+          rawMetadata.thumbnailUri ||
+          rawMetadata.thumbnail_uri ||
+          rawMetadata.logo ||
+          rawMetadata.icon ||
+          rawMetadata.iconUri ||
+          rawMetadata.iconUrl ||
+          rawMetadata.displayUri ||
+          rawMetadata.artifactUri,
+        artifactUri: rawMetadata.artifactUri,
+        standard,
+      },
+      slug
+    );
 
     redis
       .set(slug, JSON.stringify(result), "EX", ONE_WEEK_IN_SECONDS, "NX")
@@ -167,6 +221,24 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
     throw new NotFoundTokenMetadata();
   }
+}
+
+async function applyImageCacheForDataUris(metadata, slug) {
+  return {
+    ...metadata,
+    thumbnailUri: await getOrUpdateCachedImage(
+      metadata.thumbnailUri,
+      `${slug}_thumbnail`
+    ),
+    artifactUri: await getOrUpdateCachedImage(
+      metadata.artifactUri,
+      `${slug}_artifact`
+    ),
+    displayUri: await getOrUpdateCachedImage(
+      metadata.displayUri,
+      `${slug}_display`
+    ),
+  };
 }
 
 class NotFoundTokenMetadata extends Error {
