@@ -7,6 +7,8 @@ const {
   MetadataProvider,
 } = require("@taquito/tzip16");
 const { Tzip12Module } = require("@taquito/tzip12");
+const memoize = require("mem");
+
 const LambdaViewSigner = require("./signer");
 const { rpcUrl } = require("./config");
 
@@ -20,16 +22,21 @@ const metadataProvider = new MetadataProvider(
   ])
 );
 
-const buildTezos = (rpcUrl) => {
-  const tezos = new TezosToolkit(rpcUrl);
+const buildTezos = memoize(
+  (rpcUrl) => {
+    const tezos = new TezosToolkit(rpcUrl);
 
-  tezos.addExtension(new Tzip16Module(metadataProvider));
-  tezos.addExtension(new Tzip12Module(metadataProvider));
-  tezos.setSignerProvider(new LambdaViewSigner());
-  tezos.setPackerProvider(michelEncoder);
+    tezos.addExtension(new Tzip16Module(metadataProvider));
+    tezos.addExtension(new Tzip12Module(metadataProvider));
+    tezos.setSignerProvider(new LambdaViewSigner());
+    tezos.setPackerProvider(michelEncoder);
 
-  return tezos;
-};
+    return tezos;
+  },
+  {
+    maxAge: 60 * 60_000, // 1 hour
+  }
+);
 
 const Tezos = buildTezos(rpcUrl);
 

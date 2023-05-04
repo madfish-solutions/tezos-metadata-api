@@ -84,9 +84,15 @@ const getMetadataFromUri = async (contract, tokenId, tezos) => {
 };
 
 const getBCDNetwork = (chainId) => {
-  if (chainId === ChainIds.MAINNET) return 'mainnet';
-
-  if (chainId === ChainIds.ITHACANET || chainId === ChainIds.ITHACANET2) return 'ghostnet';
+  switch (chainId) {
+    case ChainIds.MAINNET:
+      return 'mainnet';
+    case ChainIds.ITHACANET:
+    case ChainIds.ITHACANET2:
+      return 'ghostnet';
+    default:
+      return undefined;
+  }
 };
 
 const getTokenMetadataFromOffchainView = async (contract, tokenId, chainId) => {

@@ -1,4 +1,3 @@
-const { TezosToolkit } = require("@taquito/taquito");
 const express = require("express");
 const cors = require("cors");
 const basicAuth = require("express-basic-auth");
@@ -118,7 +117,9 @@ app.post("/", async (req, res) => {
 });
 
 const buildGetMetadataOptions = async (rpcUrl) => {
-  if (!rpcUrl) return;
+  if (!rpcUrl) {
+    return undefined;
+  }
 
   const tezos = buildTezos(rpcUrl);
   const chainId = await tezos.rpc.getChainId();
