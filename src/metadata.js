@@ -12,7 +12,7 @@ const {
 } = require("@taquito/tzip16");
 const BigNumber = require("bignumber.js");
 const FIXTURES = require("./fixtures");
-const { Tezos } = require("./tezos");
+const Tezos = require("./tezos");
 const redis = require("./redis");
 const { toTokenSlug, parseBoolean, detectTokenStandard } = require("./utils");
 const { getOrUpdateCachedImage } = require("./image-cache");
@@ -25,8 +25,8 @@ const RETRY_PARAMS = {
 const ONE_WEEK_IN_SECONDS = 60 * 5 * 24 * 7;
 const FIVE_MIN_IN_SECONDS = 60 * 5;
 
-const getContractForMetadata = memoize((address, tezos) =>
-  tezos.contract.at(address, compose(tzip12, tzip16))
+const getContractForMetadata = memoize((address) =>
+  Tezos.contract.at(address, compose(tzip12, tzip16))
 );
 
 const getTzip12Metadata = async (contract, tokenId) => {
@@ -61,11 +61,11 @@ const getTzip16Metadata = async (contract) => {
 };
 
 const metadataProvider = new MetadataProvider(DEFAULT_HANDLERS);
+const tezosContext = new Context(Tezos.rpc);
 
-const getMetadataFromUri = async (contract, tokenId, tezos) => {
+const getMetadataFromUri = async (contract, tokenId) => {
   let metadataFromUri = {};
 
-  const context = new Context(tezos.rpc);
   try {
     const storage = await contract.storage();
     assert("token_metadata_uri" in storage);
@@ -76,7 +76,7 @@ const getMetadataFromUri = async (contract, tokenId, tezos) => {
     );
 
     metadataFromUri = await metadataProvider
-      .provideMetadata(contract, metadataUri, context)
+      .provideMetadata(contract, metadataUri, tezosContext)
       .then(({ metadata }) => metadata);
   } catch { }
 
@@ -133,7 +133,7 @@ const getTokenMetadataFromOffchainView = async (contract, tokenId, chainId) => {
   return Object.fromEntries(tokenInfo.children.map(({ name, value }) => [name, value]));
 };
 
-async function getTokenMetadata(contractAddress, tokenId = 0, options) {
+async function getTokenMetadata(contractAddress, tokenId = 0) {
   const slug = toTokenSlug(contractAddress, tokenId);
 
   const predefined = FIXTURES[slug];
@@ -153,22 +153,20 @@ async function getTokenMetadata(contractAddress, tokenId = 0, options) {
     return cached;
   }
 
-  const tezos = options?.tezos || Tezos;
-
   // Flow based on Taquito TZIP-012 & TZIP-016 implementaion
   // and https://tzip.tezosagora.org/proposal/tzip-21
   try {
-    const contract = await getContractForMetadata(contractAddress, tezos);
+    const contract = await getContractForMetadata(contractAddress);
 
     const standard = detectTokenStandard(contract);
 
     const tzip12Metadata = await getTzip12Metadata(contract, tokenId);
-    const metadataFromUri = await getMetadataFromUri(contract, tokenId, tezos);
+    const metadataFromUri = await getMetadataFromUri(contract, tokenId);
     let rawMetadata = { ...metadataFromUri, ...tzip12Metadata };
 
     if (Object.keys(rawMetadata).length === 0) {
       consola.warn(`Looking for token_metadata off-chain view, contractAddress=${contractAddress}, tokenId=${tokenId}...`);
-      const chainId = await tezos.rpc.getChainId();
+      const chainId = await Tezos.rpc.getChainId();
       rawMetadata = await getTokenMetadataFromOffchainView(contract, tokenId, chainId);
     }
 
@@ -247,11 +245,6 @@ class NotFoundTokenMetadata extends Error {
 }
 
 module.exports = memoize(getTokenMetadata, {
-  cacheKey: ([contractAddress, tokenId, options]) => {
-    const slug = toTokenSlug(contractAddress, tokenId);
-    const chainPrefix = options ? `${options.chainId}/` : '';
-
-    return `${chainPrefix}${slug}`;
-  },
+  cacheKey: ([contractAddress, tokenId]) => toTokenSlug(contractAddress, tokenId),
   maxAge: 1_000 * 60 * 10, // 10 min
 });
