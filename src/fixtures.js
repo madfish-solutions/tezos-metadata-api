@@ -1,3 +1,5 @@
+const { KnownChainIDs, getChainId } = require("./tezos");
+
 const MAINNET_FIXTURES = {
   "KT1K9gCRgaLRFKTErYt1wVxA3Frb9FjasjTV_0": {
     decimals: 18,
@@ -96,7 +98,7 @@ const MAINNET_FIXTURES = {
   },
 };
 
-const ITHACANNET_FIXTURES = {
+const ITHACANNET2_FIXTURES = {
   "KT1Wdq6sj3ZkNqQ7CeE6kTNbJXfobMX7Eqpz_0": {
     decimals: 8,
     symbol: "tzBTC",
@@ -132,8 +134,16 @@ const T4L3NT_FIXTURES = {
   }
 };
 
-module.exports = {
-  ...MAINNET_FIXTURES,
-  ...ITHACANNET_FIXTURES,
-  ...T4L3NT_FIXTURES,
+const FIXTURES_BY_CHAIN_ID = {
+  [KnownChainIDs.MAINNET]: MAINNET_FIXTURES,
+  [KnownChainIDs.ITHACANET2]: ITHACANNET2_FIXTURES,
+  [KnownChainIDs.T4L3NT]: T4L3NT_FIXTURES,
 };
+
+async function getFixture(slug) {
+  const chainId = await getChainId();
+
+  return FIXTURES_BY_CHAIN_ID[chainId]?.[slug];
+}
+
+module.exports = getFixture;

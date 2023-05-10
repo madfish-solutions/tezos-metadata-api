@@ -1,4 +1,4 @@
-const { TezosToolkit, MichelCodecPacker } = require("@taquito/taquito");
+const { TezosToolkit, MichelCodecPacker, ChainIds } = require("@taquito/taquito");
 const {
   Tzip16Module,
   HttpHandler,
@@ -31,4 +31,10 @@ Tezos.setPackerProvider(michelEncoder);
 
 const getChainId = memoize(() => Tezos.rpc.getChainId());
 
-module.exports = { Tezos, getChainId };
+const KnownChainIDs = {
+  ...ChainIds,
+  /** DCP Network */
+  T4L3NT: 'NetXooyhiru73tk',
+};
+
+module.exports = { Tezos, KnownChainIDs, getChainId };

@@ -3,7 +3,7 @@ module.exports = {
   baPassword: process.env.BA_PASSWORD || "admin",
   redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
   port: process.env.PORT || 3000,
-  rpcUrl: process.env.RPC_URL || "https://uoi3x99n7c.ghostnet.tezosrpc.midl.dev",
+  rpcUrl: process.env.RPC_URL || "https://sal1wwzg18.tezosrpc.midl.dev",
   readOnlySignerPK:
     process.env.READ_ONLY_SIGNER_PK ||
     "edpkvWbk81uh1DEvdWKR4g1bjyTGhdu1mDvznPUFE2zDwNsLXrEb9K",

@@ -11,7 +11,7 @@ const {
   DEFAULT_HANDLERS,
 } = require("@taquito/tzip16");
 const BigNumber = require("bignumber.js");
-const FIXTURES = require("./fixtures");
+const getFixture = require("./fixtures");
 const { Tezos, getChainId } = require("./tezos");
 const redis = require("./redis");
 const { toTokenSlug, parseBoolean, detectTokenStandard } = require("./utils");
@@ -87,7 +87,6 @@ const getBCDNetwork = (chainId) => {
   switch (chainId) {
     case ChainIds.MAINNET:
       return 'mainnet';
-    case ChainIds.ITHACANET:
     case ChainIds.ITHACANET2:
       return 'ghostnet';
     default:
@@ -136,7 +135,7 @@ const getTokenMetadataFromOffchainView = async (contract, tokenId, chainId) => {
 async function getTokenMetadata(contractAddress, tokenId = 0) {
   const slug = toTokenSlug(contractAddress, tokenId);
 
-  const predefined = FIXTURES[slug];
+  const predefined = await getFixture(slug);
   if (predefined) return predefined;
 
   let cached; // : undefined | null | Metadata{}
