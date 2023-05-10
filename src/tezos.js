@@ -7,6 +7,7 @@ const {
   MetadataProvider,
 } = require("@taquito/tzip16");
 const { Tzip12Module } = require("@taquito/tzip12");
+const memoize = require("p-memoize");
 
 const LambdaViewSigner = require("./signer");
 const { rpcUrl } = require("./config");
@@ -28,4 +29,6 @@ Tezos.addExtension(new Tzip12Module(metadataProvider));
 Tezos.setSignerProvider(new LambdaViewSigner());
 Tezos.setPackerProvider(michelEncoder);
 
-module.exports = Tezos;
+const getChainId = memoize(() => Tezos.rpc.getChainId());
+
+module.exports = { Tezos, getChainId };

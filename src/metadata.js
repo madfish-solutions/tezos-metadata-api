@@ -12,7 +12,7 @@ const {
 } = require("@taquito/tzip16");
 const BigNumber = require("bignumber.js");
 const FIXTURES = require("./fixtures");
-const Tezos = require("./tezos");
+const { Tezos, getChainId } = require("./tezos");
 const redis = require("./redis");
 const { toTokenSlug, parseBoolean, detectTokenStandard } = require("./utils");
 const { getOrUpdateCachedImage } = require("./image-cache");
@@ -166,7 +166,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
     if (Object.keys(rawMetadata).length === 0) {
       consola.warn(`Looking for token_metadata off-chain view, contractAddress=${contractAddress}, tokenId=${tokenId}...`);
-      const chainId = await Tezos.rpc.getChainId();
+      const chainId = await getChainId();
       rawMetadata = await getTokenMetadataFromOffchainView(contract, tokenId, chainId);
     }
 
