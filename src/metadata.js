@@ -14,6 +14,7 @@ const BigNumber = require("bignumber.js");
 const getFixture = require("./fixtures");
 const { Tezos, getChainId } = require("./tezos");
 const redis = require("./redis");
+const fetchTokenMetadataFromTzkt = require("./tzkt");
 const { toTokenSlug, parseBoolean, detectTokenStandard } = require("./utils");
 const { getOrUpdateCachedImage } = require("./image-cache");
 
@@ -163,16 +164,23 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
     const metadataFromUri = await getMetadataFromUri(contract, tokenId);
     let rawMetadata = { ...metadataFromUri, ...tzip12Metadata };
 
-    if (Object.keys(rawMetadata).length === 0) {
-      consola.warn(`Looking for token_metadata off-chain view, contractAddress=${contractAddress}, tokenId=${tokenId}...`);
+    if (!isMetadataUsable(rawMetadata)) {
+      consola.info(`Looking for token_metadata off-chain view, slug=${contractAddress}_${tokenId} ...`);
+
       const chainId = await getChainId();
-      rawMetadata = await getTokenMetadataFromOffchainView(contract, tokenId, chainId);
+      rawMetadata = await getTokenMetadataFromOffchainView(contract, tokenId, chainId).catch(error => {
+        consola.error(error);
+      });
     }
 
-    assert(
-      "decimals" in rawMetadata &&
-      ("name" in rawMetadata || "symbol" in rawMetadata)
-    );
+    if (!isMetadataUsable(rawMetadata)) {
+      consola.info(`Looking for metadata on TZKT, slug=${contractAddress}_${tokenId} ...`);
+
+      const chainId = await getChainId();
+      rawMetadata = await fetchTokenMetadataFromTzkt(chainId, contractAddress, tokenId);
+    }
+
+    assert( isMetadataUsable(rawMetadata) );
 
     const tzip16Metadata = await getTzip16Metadata(contract);
 
@@ -218,6 +226,12 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
     throw new NotFoundTokenMetadata();
   }
+}
+
+function isMetadataUsable(metadata) {
+  return typeof metadata === 'object'
+    && typeof metadata.decimals === 'number'
+    && ("name" in metadata || "symbol" in metadata);
 }
 
 async function applyImageCacheForDataUris(metadata, slug) {
