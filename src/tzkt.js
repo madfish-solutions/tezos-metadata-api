@@ -21,7 +21,7 @@ function isKnownChainId(chainId) {
   return chainId != null && KNOWN_CHAIN_IDS.includes(chainId);
 }
 
-async function fetchGetFromTzkt(chainId, endpoint, params) {
+async function getFromTzkt(chainId, endpoint, params) {
   const { data } = await api.get(endpoint, {
     baseURL: TZKT_API_BASE_URLS[chainId],
     params
@@ -33,7 +33,7 @@ async function fetchGetFromTzkt(chainId, endpoint, params) {
 async function fetchTokenMetadataFromTzkt(chainId, address, tokenId = 0) {
   if (!isKnownChainId(chainId)) return;
 
-  const [token] = await fetchGetFromTzkt(chainId, '/tokens', {
+  const [token] = await getFromTzkt(chainId, '/tokens', {
     'contract.eq': address,
     'tokenId.eq': tokenId
   });
