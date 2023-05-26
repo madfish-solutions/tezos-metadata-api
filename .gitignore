@@ -114,6 +114,9 @@ dist
 # IDEs
 .vscode/
 
+# OSs
+.DS_Store
+
 # yarn v2
 .yarn/cache
 .yarn/unplugged

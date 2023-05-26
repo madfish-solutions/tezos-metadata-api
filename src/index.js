@@ -50,6 +50,7 @@ app.delete(
 
 app.get("/metadata/:address/:tokenId", async (req, res) => {
   const { address, tokenId } = req.params;
+
   if (!address || !isValidContract(address) || !isNumeric(tokenId)) {
     consola.error(
       `Validation failed for contract ${address} and tokenId:${tokenId}`
