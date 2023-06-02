@@ -1,6 +1,13 @@
 const { KnownChainIDs, getChainId } = require("./tezos");
 
 const MAINNET_FIXTURES = {
+  "KT1WihWRnmzhfebi6zqQ4tvNGiPeVxiGwTi2_0": {
+    symbol: "TKEY_OLD",
+    name: "Deprecated Temple Key",
+    standard: "fa2",
+    decimals: 18,
+  },
+
   "KT1K9gCRgaLRFKTErYt1wVxA3Frb9FjasjTV_0": {
     decimals: 18,
     symbol: "KUSD",
