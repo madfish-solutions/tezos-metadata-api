@@ -1,5 +1,3 @@
-const { MAINNET } = require("./constants");
-
 module.exports = {
   baUsername: process.env.BA_USERNAME || "admin",
   baPassword: process.env.BA_PASSWORD || "admin",
@@ -12,7 +10,6 @@ module.exports = {
   readOnlySingerPKHash:
     process.env.READ_ONLY_SIGNER_PK_HASH ||
     "tz1fVQangAfb9J1hRRMP2bSB6LvASD6KpY8A",
-  network: process.env.NETWORK || MAINNET,
   s3AccessKeyId: process.env.S3_ACCESS_KEY_ID,
   s3SecretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
   s3Endpoint: process.env.S3_ENDPOINT || "https://fra1.digitaloceanspaces.com",
