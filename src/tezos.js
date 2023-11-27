@@ -1,4 +1,6 @@
 const { TezosToolkit, MichelCodecPacker, ChainIds } = require("@taquito/taquito");
+const { RpcClient } = require('@taquito/rpc');
+const { HttpBackend, HttpResponseError, HttpRequestFailed } = require('@taquito/http-utils');
 const {
   Tzip16Module,
   HttpHandler,
@@ -23,7 +25,51 @@ const metadataProvider = new MetadataProvider(
   ])
 );
 
-const Tezos = new TezosToolkit(rpcUrl);
+class HttpBackendWithFetch extends HttpBackend {
+  async createRequest({ url, method, timeout = this.timeout, query, headers = {}, json = true }, data) {
+    if (!headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+    }
+
+    let fullUrl;
+
+    try {
+      fullUrl = url + this.serialize(query)
+
+      const response = await Promise.race([
+        fetch(
+          fullUrl,
+          {
+            method: method !== null && method !== void 0 ? method : 'GET',
+            headers,
+            body: data,
+          }
+        ),
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout ${timeout} reached`)), timeout))
+      ]);
+
+      if (!response.ok) {
+        const errorData = await response.text();
+
+        throw new HttpResponseError(
+          `Http error response: (${response.status}) ${errorData}`,
+          response.status,
+          response.statusText,
+          errorData,
+          fullUrl
+        );
+      }
+
+      if (json) return await response.json();
+      else return await response.text();
+    }
+    catch (err) {
+      throw new HttpRequestFailed(`${method} ${fullUrl} ${String(err)}`);
+    }
+  }
+}
+
+const Tezos = new TezosToolkit(new RpcClient(rpcUrl, undefined, new HttpBackendWithFetch()));
 
 Tezos.addExtension(new Tzip16Module(metadataProvider));
 Tezos.addExtension(new Tzip12Module(metadataProvider));
@@ -31,7 +77,10 @@ Tezos.setSignerProvider(new LambdaViewSigner());
 Tezos.setPackerProvider(michelEncoder);
 
 const getChainId = memoize(async () => {
-  const chainId = await Tezos.rpc.getChainId();
+  const chainId = await Tezos.rpc.getChainId().catch(err => {
+    console.error('Failed to get Chain ID:', err);
+    throw err;
+  });
   consola.info('Chain ID = ', chainId);
 
   return chainId;

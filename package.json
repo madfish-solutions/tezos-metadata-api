@@ -6,7 +6,7 @@
   "description": "Metadata API for Tezos-based tokens, supporting both FA1.2 and FA2 standards",
   "license": "MIT",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node --experimental-fetch src/index.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.304.0",

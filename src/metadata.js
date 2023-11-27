@@ -10,7 +10,6 @@ const {
   MetadataProvider,
   DEFAULT_HANDLERS,
 } = require("@taquito/tzip16");
-const BigNumber = require("bignumber.js");
 const getFixture = require("./fixtures");
 const { Tezos, getChainId } = require("./tezos");
 const redis = require("./redis");
@@ -25,6 +24,7 @@ const RETRY_PARAMS = {
 };
 
 const ONE_HOUR_IN_SECONDS = 60 * 60;
+const ONE_HOUR_IN_MS = ONE_HOUR_IN_SECONDS * 1000;
 
 const getContractForMetadata = memoize((address) =>
   Tezos.contract.at(address, compose(tzip12, tzip16))
@@ -36,15 +36,15 @@ const getTzip12Metadata = async (contract, tokenId) => {
   try {
     tzip12Metadata = await retry(
       () =>
-        contract.tzip12().getTokenMetadata(new BigNumber(tokenId).toFixed()),
+        contract.tzip12().getTokenMetadata(tokenId),
       RETRY_PARAMS
     );
-  } catch { }
+  } catch (error) { console.error(error); }
 
   return tzip12Metadata;
 };
 
-const getTzip16Metadata = async (contract) => {
+const getTzip16Metadata = memoize(async (contract) => {
   let tzip16Metadata = {};
 
   try {
@@ -56,19 +56,23 @@ const getTzip16Metadata = async (contract) => {
           .then(({ metadata }) => metadata),
       RETRY_PARAMS
     );
-  } catch { }
+  } catch (error) { console.error(error); }
 
   return tzip16Metadata;
-};
+}, {
+  maxAge: ONE_HOUR_IN_MS
+});
 
 const metadataProvider = new MetadataProvider(DEFAULT_HANDLERS);
 const tezosContext = new Context(Tezos.rpc);
+
+const getContractStorage = memoize(contract => contract.storage(), { maxAge: ONE_HOUR_IN_MS });
 
 const getMetadataFromUri = async (contract, tokenId) => {
   let metadataFromUri = {};
 
   try {
-    const storage = await contract.storage();
+    const storage = await getContractStorage(contract);
     assert("token_metadata_uri" in storage);
 
     const metadataUri = storage.token_metadata_uri.replace(
@@ -143,7 +147,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
   try {
     const cachedStr = await redis.get(slug);
     if (cachedStr) cached = JSON.parse(cachedStr);
-  } catch { }
+  } catch (error) { console.error(error); }
 
   if (cached !== undefined) {
     if (cached === null) {

@@ -30,7 +30,7 @@ async function getFromTzkt(chainId, endpoint, params) {
   return data;
 }
 
-async function fetchTokenMetadataFromTzkt(chainId, address, tokenId = 0) {
+async function fetchTokenMetadataFromTzkt(chainId, address, tokenId = '0') {
   if (!isKnownChainId(chainId)) return;
 
   const [token] = await getFromTzkt(chainId, '/tokens', {
