@@ -24,6 +24,7 @@
     "express-basic-auth": "^1.2.0",
     "ioredis": "^4.27.9",
     "lokijs": "^1.5.12",
+    "memoizee": "^0.4.15",
     "p-memoize": "^4.0.1",
     "sharp": "^0.32.0"
   }

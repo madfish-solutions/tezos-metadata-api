@@ -48,7 +48,7 @@ class HttpBackendWithFetch extends HttpBackend {
         fetch(
           fullUrl,
           {
-            method: method !== null && method !== void 0 ? method : 'GET',
+            method,
             headers,
             body,
           }
