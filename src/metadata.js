@@ -1,6 +1,7 @@
 const assert = require("assert");
 const axios = require("axios");
-const memoize = require("p-memoize");
+const pMemoize = require("p-memoize");
+const memoizee = require("memoizee");
 const retry = require("async-retry");
 const consola = require("consola");
 const { compose, Context, ChainIds } = require("@taquito/taquito");
@@ -25,9 +26,13 @@ const RETRY_PARAMS = {
 
 const ONE_HOUR_IN_SECONDS = 60 * 60;
 const ONE_HOUR_IN_MS = ONE_HOUR_IN_SECONDS * 1000;
+const ONE_DAY_IN_MS = ONE_HOUR_IN_MS * 24;
 
-const getContractForMetadata = memoize((address) =>
-  Tezos.contract.at(address, compose(tzip12, tzip16))
+const getContractForMetadata = pMemoize(
+  address => Tezos.contract.at(address, compose(tzip12, tzip16)),
+  {
+    maxAge: 7 * ONE_DAY_IN_MS
+  }
 );
 
 const getTzip12Metadata = async (contract, tokenId) => {
@@ -44,7 +49,7 @@ const getTzip12Metadata = async (contract, tokenId) => {
   return tzip12Metadata;
 };
 
-const getTzip16Metadata = memoize(async (contract) => {
+const getTzip16Metadata = memoizee(async (contract) => {
   let tzip16Metadata = {};
 
   try {
@@ -60,22 +65,30 @@ const getTzip16Metadata = memoize(async (contract) => {
 
   return tzip16Metadata;
 }, {
-  maxAge: ONE_HOUR_IN_MS
+  promise: true,
+  maxAge: ONE_HOUR_IN_MS,
+  max: 3_000
 });
 
 const metadataProvider = new MetadataProvider(DEFAULT_HANDLERS);
 const tezosContext = new Context(Tezos.rpc);
 
-const getContractStorage = memoize(contract => contract.storage(), { maxAge: ONE_HOUR_IN_MS });
+const getContractStorageTokenMetadataUri = memoizee(
+  contract => contract.storage().then(storage => storage?.token_metadata_uri),
+{
+  promise: true,
+  maxAge: ONE_HOUR_IN_MS,
+  max: 6_000
+});
 
 const getMetadataFromUri = async (contract, tokenId) => {
   let metadataFromUri = {};
 
   try {
-    const storage = await getContractStorage(contract);
-    assert("token_metadata_uri" in storage);
+    const token_metadata_uri = await getContractStorageTokenMetadataUri(contract);
+    assert(typeof token_metadata_uri === 'string');
 
-    const metadataUri = storage.token_metadata_uri.replace(
+    const metadataUri = token_metadata_uri.replace(
       "{tokenId}",
       tokenId
     );
@@ -261,7 +274,7 @@ class NotFoundTokenMetadata extends Error {
   message = "Metadata for token doesn't found";
 }
 
-module.exports = memoize(getTokenMetadata, {
+module.exports = pMemoize(getTokenMetadata, {
   cacheKey: ([contractAddress, tokenId]) => toTokenSlug(contractAddress, tokenId),
   maxAge: 1_000 * 60 * 10, // 10 min
 });

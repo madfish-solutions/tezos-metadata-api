@@ -25,24 +25,32 @@ const metadataProvider = new MetadataProvider(
   ])
 );
 
+const HTTP_METHODS_WITH_BODY = ['POST', 'PUT', 'PATCH'];
+
 class HttpBackendWithFetch extends HttpBackend {
   async createRequest({ url, method, timeout = this.timeout, query, headers = {}, json = true }, data) {
     if (!headers['Content-Type']) {
         headers['Content-Type'] = 'application/json';
     }
 
+    if(!method) method = 'GET';
+
+    const body = data !== undefined && HTTP_METHODS_WITH_BODY.includes(method)
+      ? JSON.stringify(data)
+      : undefined;
+
     let fullUrl;
 
     try {
-      fullUrl = url + this.serialize(query)
+      fullUrl = url + this.serialize(query);
 
       const response = await Promise.race([
         fetch(
           fullUrl,
           {
-            method: method !== null && method !== void 0 ? method : 'GET',
+            method,
             headers,
-            body: data,
+            body,
           }
         ),
         new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout ${timeout} reached`)), timeout))
@@ -69,7 +77,9 @@ class HttpBackendWithFetch extends HttpBackend {
   }
 }
 
-const Tezos = new TezosToolkit(new RpcClient(rpcUrl, undefined, new HttpBackendWithFetch()));
+const Tezos = new TezosToolkit(
+  new RpcClient(rpcUrl, undefined, new HttpBackendWithFetch())
+);
 
 Tezos.addExtension(new Tzip16Module(metadataProvider));
 Tezos.addExtension(new Tzip12Module(metadataProvider));
