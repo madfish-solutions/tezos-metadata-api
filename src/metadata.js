@@ -209,7 +209,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
       {
         ...(tzip16Metadata?.assets?.[assetId] ?? {}),
         ...rawMetadata,
-        decimals: +rawMetadata.decimals,
+        decimals: Number(rawMetadata.decimals) || 0,
         symbol: rawMetadata.symbol || rawMetadata.name.substr(0, 8),
         name: rawMetadata.name || rawMetadata.symbol,
         shouldPreferSymbol: parseBoolean(rawMetadata.shouldPreferSymbol),
@@ -251,8 +251,8 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
 function isMetadataUsable(metadata) {
   return typeof metadata === 'object'
-    && typeof metadata.decimals === 'number'
-    && ("name" in metadata || "symbol" in metadata);
+    && (typeof metadata.decimals === 'number' || typeof metadata.artifactUri === 'string')
+    && (typeof metadata.name === 'string' || typeof metadata.symbol === 'string');
 }
 
 async function applyImageCacheForDataUris(metadata, slug) {

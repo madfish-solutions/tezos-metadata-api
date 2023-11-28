@@ -27,7 +27,7 @@ const Tezos = new TezosToolkit(
 const httpHandler = new HttpHandler();
 httpHandler.httpBackend = httpBackend;
 const ipfsHandler = new IpfsHttpHandler("cloudflare-ipfs.com");
-ipfsHandler.httpBackend = new HttpBackend(undefined, 10_000);
+ipfsHandler.httpBackend = new HttpBackend(undefined, 15_000);
 
 const metadataProvider = new MetadataProvider(
   new Map([
