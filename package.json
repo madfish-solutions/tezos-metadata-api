@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.304.0",
-    "@taquito/michel-codec": "15.0.1",
     "@taquito/taquito": "15.0.1",
     "@taquito/tzip12": "15.0.1",
     "@taquito/tzip16": "15.0.1",

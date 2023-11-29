@@ -24,14 +24,18 @@ const RETRY_PARAMS = {
   maxTimeout: 100,
 };
 
+const MEMOIZED_CONTRACTS_NUMBER = 1_000;
+
 const ONE_HOUR_IN_SECONDS = 60 * 60;
 const ONE_HOUR_IN_MS = ONE_HOUR_IN_SECONDS * 1000;
 const ONE_DAY_IN_MS = ONE_HOUR_IN_MS * 24;
 
-const getContractForMetadata = pMemoize(
+const getContractForMetadata = memoizee(
   address => Tezos.contract.at(address, compose(tzip12, tzip16)),
   {
-    maxAge: 7 * ONE_DAY_IN_MS
+    promise: true,
+    maxAge: 7 * ONE_DAY_IN_MS,
+    max: MEMOIZED_CONTRACTS_NUMBER
   }
 );
 
@@ -67,7 +71,7 @@ const getTzip16Metadata = memoizee(async (contract) => {
 }, {
   promise: true,
   maxAge: ONE_HOUR_IN_MS,
-  max: 3_000
+  max: MEMOIZED_CONTRACTS_NUMBER
 });
 
 const metadataProvider = new MetadataProvider(DEFAULT_HANDLERS);
@@ -78,7 +82,7 @@ const getContractStorageTokenMetadataUri = memoizee(
 {
   promise: true,
   maxAge: ONE_HOUR_IN_MS,
-  max: 6_000
+  max: MEMOIZED_CONTRACTS_NUMBER
 });
 
 const getMetadataFromUri = async (contract, tokenId) => {
@@ -205,7 +209,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
       {
         ...(tzip16Metadata?.assets?.[assetId] ?? {}),
         ...rawMetadata,
-        decimals: +rawMetadata.decimals,
+        decimals: Number(rawMetadata.decimals) || 0,
         symbol: rawMetadata.symbol || rawMetadata.name.substr(0, 8),
         name: rawMetadata.name || rawMetadata.symbol,
         shouldPreferSymbol: parseBoolean(rawMetadata.shouldPreferSymbol),
@@ -247,8 +251,8 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
 function isMetadataUsable(metadata) {
   return typeof metadata === 'object'
-    && typeof metadata.decimals === 'number'
-    && ("name" in metadata || "symbol" in metadata);
+    && (typeof metadata.decimals === 'number' || typeof metadata.artifactUri === 'string')
+    && (typeof metadata.name === 'string' || typeof metadata.symbol === 'string');
 }
 
 async function applyImageCacheForDataUris(metadata, slug) {
