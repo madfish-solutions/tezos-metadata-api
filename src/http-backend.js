@@ -1,4 +1,5 @@
 const { HttpBackend, HttpResponseError, HttpRequestFailed } = require('@taquito/http-utils');
+const assert = require("assert");
 const consola = require("consola");
 
 const HTTP_METHODS_WITH_BODY = ['POST', 'PUT', 'PATCH'];
@@ -8,11 +9,14 @@ class HttpBackendWithFetch extends HttpBackend {
   pauseOn429;
 
   /**
-   * @param {number | undefined} pauseOn429 // Must be lower than `timeout`
+   * @param {number} timeout // Same default as Taquito's - 30 seconds
+   * @param {number | undefined} pauseOn429
    */
-  constructor(timeout, pauseOn429 = 0) {
+  constructor(timeout = 30_000, pauseOn429 = 0) {
     super(timeout);
     this.pauseOn429 = pauseOn429;
+
+    assert(timeout > pauseOn429, '`pauseOn429` must be lower than `timeout`');
   }
 
   async createRequest({ url, method, timeout = this.timeout, query, headers = {}, json = true }, data) {
