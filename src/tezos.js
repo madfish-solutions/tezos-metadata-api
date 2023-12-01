@@ -4,7 +4,6 @@ const {
   Tzip16Module,
   HttpHandler,
   TezosStorageHandler,
-  IpfsHttpHandler,
   MetadataProvider,
 } = require("@taquito/tzip16");
 const { Tzip12Module } = require("@taquito/tzip12");
@@ -13,6 +12,7 @@ const pMemoize = require("p-memoize");
 
 const LambdaViewSigner = require("./signer");
 const { rpcUrl } = require("./config");
+const IpfsHttpHandler = require("./ipfs-handler-stacked");
 const HttpBackend = require("./http-backend");
 
 const httpBackend = new HttpBackend();
@@ -26,15 +26,13 @@ const Tezos = new TezosToolkit(
 
 const httpHandler = new HttpHandler();
 httpHandler.httpBackend = httpBackend;
-const ipfsHandler = new IpfsHttpHandler("cloudflare-ipfs.com");
-ipfsHandler.httpBackend = new HttpBackend(45_000, 15_000);
 
 const metadataProvider = new MetadataProvider(
   new Map([
     ["http", httpHandler],
     ["https", httpHandler],
     ["tezos-storage", new TezosStorageHandler()],
-    ["ipfs", ipfsHandler],
+    ["ipfs", new IpfsHttpHandler()],
   ])
 );
 
