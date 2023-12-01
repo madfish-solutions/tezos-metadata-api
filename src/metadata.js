@@ -13,7 +13,7 @@ const {
 } = require("@taquito/tzip16");
 const getFixture = require("./fixtures");
 const { Tezos, getChainId } = require("./tezos");
-const redis = require("./redis");
+const metastore = require("./metastore");
 const fetchTokenMetadataFromTzkt = require("./tzkt");
 const { toTokenSlug, parseBoolean, detectTokenStandard } = require("./utils");
 const { getOrUpdateCachedImage } = require("./image-cache");
@@ -44,8 +44,7 @@ const getTzip12Metadata = async (contract, tokenId) => {
 
   try {
     tzip12Metadata = await retry(
-      () =>
-        contract.tzip12().getTokenMetadata(tokenId),
+      () => contract.tzip12().getTokenMetadata(tokenId),
       RETRY_PARAMS
     );
   } catch (error) { console.error(error); }
@@ -54,23 +53,23 @@ const getTzip12Metadata = async (contract, tokenId) => {
 };
 
 const getTzip16Metadata = memoizee(async (contract) => {
-  let tzip16Metadata = {};
+    let tzip16Metadata = {};
 
-  try {
-    tzip16Metadata = await retry(
-      () =>
-        contract
-          .tzip16()
-          .getMetadata()
-          .then(({ metadata }) => metadata),
-      RETRY_PARAMS
-    );
+    try {
+      tzip16Metadata = await retry(
+        () =>
+          contract
+            .tzip16()
+            .getMetadata()
+            .then(({ metadata }) => metadata),
+        RETRY_PARAMS
+      );
   } catch (error) { console.error(error); }
 
-  return tzip16Metadata;
+    return tzip16Metadata;
 }, {
-  promise: true,
-  maxAge: ONE_HOUR_IN_MS,
+    promise: true,
+    maxAge: ONE_HOUR_IN_MS,
   max: MEMOIZED_CONTRACTS_NUMBER
 });
 
@@ -79,9 +78,9 @@ const tezosContext = new Context(Tezos.rpc);
 
 const getContractStorageTokenMetadataUri = memoizee(
   contract => contract.storage().then(storage => storage?.token_metadata_uri),
-{
-  promise: true,
-  maxAge: ONE_HOUR_IN_MS,
+  {
+    promise: true,
+    maxAge: ONE_HOUR_IN_MS,
   max: MEMOIZED_CONTRACTS_NUMBER
 });
 
@@ -130,17 +129,17 @@ const getTokenMetadataFromOffchainView = async (contract, tokenId, chainId) => {
   console.warn('Trying to call token_metadata view via BCD...');
   const { data: bcdResponseData } = await retry(
     () => axios.post(
-      `https://api.better-call.dev/v1/contract/${bcdNetwork}/${contract.address}/views/execute`,
-      {
-        data: {
+        `https://api.better-call.dev/v1/contract/${bcdNetwork}/${contract.address}/views/execute`,
+        {
+          data: {
           '@nat_1': tokenId
-        },
-        implementation: 0,
+          },
+          implementation: 0,
         kind: 'off-chain',
         name: 'token_metadata',
         view: implementation
-      }
-    ),
+        }
+      ),
     RETRY_PARAMS
   );
 
@@ -162,9 +161,10 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
   let cached; // : undefined | null | Metadata{}
   try {
-    const cachedStr = await redis.get(slug);
-    if (cachedStr) cached = JSON.parse(cachedStr);
-  } catch (error) { console.error(error); }
+    cached = await metastore.get(slug);
+  } catch (error) {
+    consola.warn("Failed to get cache", error);
+  }
 
   if (cached !== undefined) {
     if (cached === null) {
@@ -229,21 +229,17 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
       slug
     );
 
-    redis
-      .set(slug, JSON.stringify(result))
-      .catch((err) => {
-        console.warn("Failed to set cache", err);
-      });
+    metastore.set(slug, result).catch((err) => {
+      console.warn("Failed to set cache", err);
+    });
 
     return result;
   } catch (err) {
     consola.error(err);
 
-    redis
-      .set(slug, JSON.stringify(null), "EX", ONE_HOUR_IN_SECONDS, "NX")
-      .catch((err) => {
-        console.warn("Failed to set cache", err);
-      });
+    metastore.set(slug, null, ONE_HOUR_IN_MS).catch((err) => {
+      console.warn("Failed to set cache", err);
+    });
 
     throw new NotFoundTokenMetadata();
   }
