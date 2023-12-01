@@ -252,23 +252,18 @@ function isMetadataUsable(metadata) {
 }
 
 async function applyImageCacheForDataUris(metadata, slug) {
-  const { artifactUri, thumbnailUri, displayUri } = metadata;
-
-  if (thumbnailUri === artifactUri || thumbnailUri === displayUri) thumbnailUri = undefined;
-  if (displayUri === artifactUri) displayUri = undefined;
-
   return {
     ...metadata,
     thumbnailUri: await getOrUpdateCachedImage(
-      thumbnailUri,
+      metadata.thumbnailUri,
       `${slug}_thumbnail`
     ),
     artifactUri: await getOrUpdateCachedImage(
-      artifactUri,
+      metadata.artifactUri,
       `${slug}_artifact`
     ),
     displayUri: await getOrUpdateCachedImage(
-      displayUri,
+      metadata.displayUri,
       `${slug}_display`
     ),
   };
