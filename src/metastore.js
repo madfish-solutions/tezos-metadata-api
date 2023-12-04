@@ -1,15 +1,28 @@
 const config = require("./config");
 
-const callMetastore = (key, params) =>
-  fetch(`${config.metastoreUrl}/${key}`, {
+const callMetastore = async (key, params) => {
+  const authHeaders = config.metastoreAuthSecret
+    ? { Authorization: config.metastoreAuthSecret }
+    : {};
+
+  const response = await fetch(`${config.metastoreUrl}/${key}`, {
     ...params,
     headers: {
+      ...authHeaders,
       "Content-Type": "application/json",
-      ...(config.metastoreAuthSecret
-        ? { Authorization: config.metastoreAuthSecret }
-        : {}),
     },
   });
+
+  if (response.status === 404) {
+    return undefined;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Metastore returned ${response.status}`);
+  }
+
+  return response;
+};
 
 const set = (key, value, ttl = undefined) =>
   callMetastore(key, {
@@ -27,10 +40,6 @@ const get = async (key) => {
   const call = await callMetastore(key, {
     method: "GET",
   });
-
-  if (call.status === 404) {
-    return undefined;
-  }
 
   return call.json();
 };

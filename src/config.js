@@ -19,5 +19,5 @@ module.exports = {
     process.env.S3_CDN_URL ||
     "https://metadata-storage.fra1.cdn.digitaloceanspaces.com",
   metastoreUrl: process.env.METASTORE_URL || "http://localhost:3001",
-  metastoreAuthSecret: process.METASTORE_AUTH_SECRET,
+  metastoreAuthSecret: process.env.METASTORE_AUTH_SECRET,
 };
