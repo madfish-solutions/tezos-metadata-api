@@ -2,7 +2,6 @@ const { TezosToolkit, MichelCodecPacker, ChainIds } = require("@taquito/taquito"
 const { RpcClient, RpcClientCache } = require('@taquito/rpc');
 const {
   Tzip16Module,
-  HttpHandler,
   TezosStorageHandler,
   MetadataProvider,
 } = require("@taquito/tzip16");
@@ -13,26 +12,27 @@ const pMemoize = require("p-memoize");
 const LambdaViewSigner = require("./signer");
 const { rpcUrl } = require("./config");
 const IpfsHttpHandler = require("./ipfs-handler-stacked");
+const HttpHandlerWithIpfs = require("./http-handler-with-ipfs");
 const HttpBackend = require("./http-backend");
-
-const httpBackend = new HttpBackend();
 
 const Tezos = new TezosToolkit(
   new RpcClientCache(
-    new RpcClient(rpcUrl, undefined, httpBackend),
+    new RpcClient(rpcUrl, undefined, new HttpBackend()),
     60_000
   )
 );
 
-const httpHandler = new HttpHandler();
-httpHandler.httpBackend = httpBackend;
+const tezosContext = Tezos._context;
+
+const ipfsHandler = new IpfsHttpHandler();
+const httpHandler = new HttpHandlerWithIpfs(ipfsHandler);
 
 const metadataProvider = new MetadataProvider(
   new Map([
     ["http", httpHandler],
     ["https", httpHandler],
     ["tezos-storage", new TezosStorageHandler()],
-    ["ipfs", new IpfsHttpHandler()],
+    ["ipfs", ipfsHandler],
   ])
 );
 
@@ -61,4 +61,10 @@ const KnownChainIDs = {
   T4L3NT_TEST: 'NetXX7Tz1sK8JTa'
 };
 
-module.exports = { Tezos, KnownChainIDs, getChainId };
+module.exports = {
+  Tezos,
+  tezosContext,
+  KnownChainIDs,
+  metadataProvider,
+  getChainId
+};
