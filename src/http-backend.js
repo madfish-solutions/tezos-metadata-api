@@ -19,7 +19,7 @@ class HttpBackendWithFetch extends HttpBackend {
     assert(timeout > pauseOn429, '`pauseOn429` must be lower than `timeout`');
   }
 
-  async createRequest({ url, method, timeout = this.timeout, query, headers = {}, json = true }, data) {
+  async createRequest({ url, method, timeout = this.timeout, query, headers = {}, json = true, abortController }, data) {
     if (!headers['Content-Type']) {
       headers['Content-Type'] = 'application/json';
     }
@@ -35,8 +35,10 @@ class HttpBackendWithFetch extends HttpBackend {
     try {
       fullUrl = url + this.serialize(query);
 
-      const controller = new AbortController();
-      setTimeout(() => void controller.abort(), timeout);
+      if (!abortController) {
+        abortController = new AbortController();
+        setTimeout(() => void abortController.abort(), timeout);
+      }
 
       const response = await (this.pauseOn429 ? this.queueFetch : fetch)(
         fullUrl,
@@ -44,7 +46,7 @@ class HttpBackendWithFetch extends HttpBackend {
           method,
           headers,
           body,
-          signal: controller.signal
+          signal: abortController.signal
         }
       );
 
@@ -64,6 +66,8 @@ class HttpBackendWithFetch extends HttpBackend {
       else return await response.text();
     }
     catch (err) {
+      if (err instanceof HttpResponseError) throw err;
+
       throw new HttpRequestFailed(`${method} ${fullUrl} ${String(err)}`);
     }
   }

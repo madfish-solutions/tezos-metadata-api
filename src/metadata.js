@@ -53,7 +53,7 @@ const getTzip12Metadata = async (contract, tokenId) => {
   return tzip12Metadata;
 };
 
-const getTzip16Metadata = memoizee(async (contract) => {
+const getTzip16MetadataView = memoizee(async (contract) => {
   let tzip16Metadata = {};
 
   try {
@@ -62,7 +62,7 @@ const getTzip16Metadata = memoizee(async (contract) => {
         contract
           .tzip16()
           .getMetadata()
-          .then(({ metadata }) => metadata),
+          .then(({ metadata }) => metadata?.views?.find(view => view.name === 'token_metadata')),
       RETRY_PARAMS
     );
   } catch (error) { console.error(error); }
@@ -121,9 +121,8 @@ const getTokenMetadataFromOffchainView = async (contract, tokenId, chainId) => {
 
   if (!bcdNetwork) return {};
 
-  const tzip16Metadata = await getTzip16Metadata(contract);
-  const tokenMetadataView = tzip16Metadata?.views?.find(view => view.name === 'token_metadata');
-  const implementation = tokenMetadataView?.implementations[0];
+  const tzip16MetadataView = await getTzip16MetadataView(contract);
+  const implementation = tzip16MetadataView?.implementations[0];
 
   if (!implementation) return {};
 
@@ -203,28 +202,25 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
     assert( isMetadataUsable(rawMetadata) );
 
-    const tzip16Metadata = await getTzip16Metadata(contract);
+    const thumbnailUri = rawMetadata.thumbnailUri ||
+      rawMetadata.thumbnail_uri ||
+      rawMetadata.logo ||
+      rawMetadata.icon ||
+      rawMetadata.iconUri ||
+      rawMetadata.iconUrl ||
+      rawMetadata.displayUri ||
+      rawMetadata.artifactUri;
 
     const result = await applyImageCacheForDataUris(
       {
-        ...(tzip16Metadata?.assets?.[assetId] ?? {}),
-        ...rawMetadata,
+        standard,
         decimals: Number(rawMetadata.decimals) || 0,
         symbol: rawMetadata.symbol || rawMetadata.name.substr(0, 8),
         name: rawMetadata.name || rawMetadata.symbol,
         shouldPreferSymbol: parseBoolean(rawMetadata.shouldPreferSymbol),
-        displayUri: rawMetadata.displayUri,
-        thumbnailUri:
-          rawMetadata.thumbnailUri ||
-          rawMetadata.thumbnail_uri ||
-          rawMetadata.logo ||
-          rawMetadata.icon ||
-          rawMetadata.iconUri ||
-          rawMetadata.iconUrl ||
-          rawMetadata.displayUri ||
-          rawMetadata.artifactUri,
         artifactUri: rawMetadata.artifactUri,
-        standard,
+        displayUri: rawMetadata.displayUri,
+        thumbnailUri,
       },
       slug
     );
