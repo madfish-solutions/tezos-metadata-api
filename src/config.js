@@ -3,7 +3,7 @@ module.exports = {
   baPassword: process.env.BA_PASSWORD || "admin",
   redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
   port: process.env.PORT || 3000,
-  rpcUrl: process.env.RPC_URL || "https://sal1wwzg18.tezosrpc.midl.dev",
+  rpcUrl: process.env.RPC_URL || "https://prod.tcinfra.net/rpc/mainnet",
   readOnlySignerPK:
     process.env.READ_ONLY_SIGNER_PK ||
     "edpkvWbk81uh1DEvdWKR4g1bjyTGhdu1mDvznPUFE2zDwNsLXrEb9K",
@@ -18,4 +18,6 @@ module.exports = {
   s3CdnUrl:
     process.env.S3_CDN_URL ||
     "https://metadata-storage.fra1.cdn.digitaloceanspaces.com",
+  metastoreUrl: process.env.METASTORE_URL || "http://localhost:3001",
+  metastoreAuthSecret: process.env.METASTORE_AUTH_SECRET,
 };

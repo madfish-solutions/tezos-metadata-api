@@ -11,7 +11,7 @@ const {
   fromTokenSlug,
   toTokenSlug,
 } = require("./utils");
-const redis = require("./redis");
+const metastore = require("./metastore");
 
 const app = express();
 
@@ -36,7 +36,7 @@ app.delete(
 
     try {
       const tokenSlug = toTokenSlug(address, tokenId);
-      const deleted = await redis.del(tokenSlug);
+      const deleted = await metastore.del(tokenSlug);
       res.send({ deleted }).status(200);
     } catch (err) {
       res

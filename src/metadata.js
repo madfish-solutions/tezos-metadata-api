@@ -8,8 +8,10 @@ const { compose, ChainIds } = require("@taquito/taquito");
 const { tzip12 } = require("@taquito/tzip12");
 const { tzip16 } = require("@taquito/tzip16");
 const getFixture = require("./fixtures");
-const redis = require("./redis");
+
+const metastore = require("./metastore");
 const { Tezos, tezosContext, metadataProvider, getChainId } = require("./tezos");
+
 const fetchTokenMetadataFromTzkt = require("./tzkt");
 const { toTokenSlug, parseBoolean, detectTokenStandard } = require("./utils");
 const { getOrUpdateCachedImage } = require("./image-cache");
@@ -155,9 +157,10 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
   let cached; // : undefined | null | Metadata{}
   try {
-    const cachedStr = await redis.get(slug);
-    if (cachedStr) cached = JSON.parse(cachedStr);
-  } catch (error) { console.error(error); }
+    cached = await metastore.get(slug);
+  } catch (error) {
+    consola.warn("Failed to get cache", error);
+  }
 
   if (cached !== undefined) {
     if (cached === null) {
@@ -222,22 +225,18 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
       slug
     );
 
-    redis
-      .set(slug, JSON.stringify(result))
-      .catch((err) => {
-        console.warn("Failed to set cache", err);
-      });
+    metastore.set(slug, result).catch((err) => {
+      console.warn("Failed to set cache", err);
+    });
 
     return result;
   } catch (error) {
     consola.error('No metadata for', slug, 'Error:');
     console.error(error);
 
-    redis
-      .set(slug, JSON.stringify(null), "EX", ONE_HOUR_IN_SECONDS, "NX")
-      .catch((err) => {
-        console.warn("Failed to set cache", err);
-      });
+    metastore.set(slug, null, ONE_HOUR_IN_MS).catch((err) => {
+      console.warn("Failed to set cache", err);
+    });
 
     throw new NotFoundTokenMetadata();
   }
