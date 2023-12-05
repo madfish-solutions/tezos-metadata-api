@@ -39,10 +39,9 @@ async function fetchTokenMetadataFromTzkt(chainId, address, tokenId = '0') {
   });
 
   const metadata = token?.metadata;
+  if (!metadata) return null;
 
-  if (!metadata?.decimals) return;
-
-  const decimals = Number(metadata.decimals);
+  const decimals = metadata.decimals && Number(metadata.decimals);
 
   return { ...metadata, decimals };
 };

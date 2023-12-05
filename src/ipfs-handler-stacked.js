@@ -8,12 +8,12 @@ const memoizee = require("memoizee");
 const HttpBackend = require("./http-backend");
 
 class IpfsHttpHandlerStacked extends IpfsHttpHandler {
-  _gateways;
+  gateways;
 
   constructor() {
     super();
 
-    this.httpBackend = new HttpBackend(120_000);
+    this.httpBackend = new HttpBackend();
 
     /**
      * (!) Make sure, added gateway responds to overload with error 429.
@@ -21,7 +21,7 @@ class IpfsHttpHandlerStacked extends IpfsHttpHandler {
      *
      * TODO: Dismiss broken gateways in runtime
      */
-    this._gateways = [
+    this.gateways = [
       new Gateway('cloudflare-ipfs.com', 10_000),
       new Gateway('cf-ipfs.com', 10_000),
       new Gateway('gateway.pinata.cloud', 10_000),
@@ -33,22 +33,22 @@ class IpfsHttpHandlerStacked extends IpfsHttpHandler {
     return this.getMetadataMemoized(location.substring(2));
   }
 
-  getMetadataMemoized = memoizee((hash) => {
+  getMetadataMemoized = memoizee((ipfsPath) => {
     const abortController = new AbortController();
     setTimeout(() => {
       abortController.abort();
-    }, this.httpBackend.timeout);
+    }, 120_000);
 
-    return this._createRequest(hash, abortController);
+    return this._createRequest(ipfsPath, abortController);
   }, {
     promise: true,
     maxAge: 60 * 60_000,
     max: 1_000
   })
 
-  async _createRequest(hash, abortController) {
+  async _createRequest(ipfsPath, abortController) {
     const gateway = await this._getGateway();
-    const url = `https://${gateway}/ipfs/${hash}/`;
+    const url = `https://${gateway}/ipfs/${ipfsPath}`;
 
     try {
       return await this.httpBackend.createRequest({
@@ -66,7 +66,7 @@ class IpfsHttpHandlerStacked extends IpfsHttpHandler {
       if (error instanceof HttpResponseError && error.status === 429) {
         this._pauseGateway(gateway);
 
-        return this._createRequest(hash, abortController);
+        return this._createRequest(ipfsPath, abortController);
       }
 
       throw error;
@@ -75,12 +75,12 @@ class IpfsHttpHandlerStacked extends IpfsHttpHandler {
 
   _getGateway() {
     return Promise.race(
-      this._gateways.map(g => g.promise)
+      this.gateways.map(g => g.promise)
     );
   }
 
   _pauseGateway(gatewayValue) {
-    const gateway = this._gateways.find(g => g.value === gatewayValue);
+    const gateway = this.gateways.find(g => g.value === gatewayValue);
     if (gateway) gateway.pause();
     else consola.warn(`[IpfsHttpHandlerStacked] Gateway '${gatewayValue}' not found`);
   }
