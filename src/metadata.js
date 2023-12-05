@@ -10,12 +10,7 @@ const { tzip16 } = require("@taquito/tzip16");
 const getFixture = require("./fixtures");
 
 const metastore = require("./metastore");
-const {
-  Tezos,
-  tezosContext,
-  metadataProvider,
-  getChainId,
-} = require("./tezos");
+const { Tezos, tezosContext, metadataProvider, getChainId } = require("./tezos");
 
 const fetchTokenMetadataFromTzkt = require("./tzkt");
 const { toTokenSlug, parseBoolean, detectTokenStandard } = require("./utils");
@@ -35,72 +30,66 @@ const ONE_HOUR_IN_MS = ONE_HOUR_IN_SECONDS * 1000;
 const ONE_DAY_IN_MS = ONE_HOUR_IN_MS * 24;
 
 const getContractForMetadata = memoizee(
-  (address) => Tezos.contract.at(address, compose(tzip12, tzip16)),
+  address => Tezos.contract.at(address, compose(tzip12, tzip16)),
   {
     promise: true,
     maxAge: 7 * ONE_DAY_IN_MS,
-    max: MEMOIZED_CONTRACTS_NUMBER,
+    max: MEMOIZED_CONTRACTS_NUMBER
   }
 );
 
-const getTzip12Metadata = async (contract, tokenId) =>
-  retry(() => contract.tzip12().getTokenMetadata(tokenId), RPC_RETRY_OPTIONS);
+const getTzip12Metadata = async (contract, tokenId) => retry(
+  () => contract.tzip12().getTokenMetadata(tokenId),
+  RPC_RETRY_OPTIONS
+);
 
-const getTzip16MetadataView = memoizee(
-  async (contract) =>
-    retry(
-      () =>
-        contract
-          .tzip16()
-          .getMetadata()
-          .then(({ metadata }) =>
-            metadata?.views?.find((view) => view.name === "token_metadata")
-          ),
-      RPC_RETRY_OPTIONS
-    ),
+const getTzip16MetadataView = memoizee(async (contract) =>
+  retry(() =>
+    contract
+      .tzip16()
+      .getMetadata()
+      .then(({ metadata }) => metadata?.views?.find(view => view.name === 'token_metadata')),
+    RPC_RETRY_OPTIONS,
+  ),
   {
     promise: true,
     maxAge: ONE_HOUR_IN_MS,
-    max: MEMOIZED_CONTRACTS_NUMBER,
+    max: MEMOIZED_CONTRACTS_NUMBER
   }
 );
 
 const getContractStorageTokenMetadataUri = memoizee(
-  (contract) =>
-    contract.storage().then(
-      (storage) => storage?.token_metadata_uri,
-      (error) => {
-        consola.error(
-          `Caught when getting contract ${contract.address} storage. Error:`
-        );
-        console.error(error);
+  contract => contract.storage().then(
+    storage => storage?.token_metadata_uri,
+    error => {
+      consola.error(`Caught when getting contract ${contract.address} storage. Error:`);
+      console.error(error);
 
-        throw error;
-      }
-    ),
+      throw error;
+    }
+  ),
   {
     promise: true,
     maxAge: ONE_HOUR_IN_MS,
-    max: MEMOIZED_CONTRACTS_NUMBER,
-  }
+    max: MEMOIZED_CONTRACTS_NUMBER
+}
 );
 
 const getMetadataFromUri = async (contract, tokenId) => {
   const token_metadata_uri = await getContractStorageTokenMetadataUri(contract);
-  assert(typeof token_metadata_uri === "string");
+  assert(typeof token_metadata_uri === 'string');
 
-  const metadataUri = token_metadata_uri.replace("{tokenId}", tokenId);
+  const metadataUri = token_metadata_uri.replace(
+    "{tokenId}",
+    tokenId
+  );
 
   return await metadataProvider
     .provideMetadata(contract, metadataUri, tezosContext)
     .then(
       ({ metadata }) => metadata,
-      (error) => {
-        console.error(
-          "[From URI] Caught for slug:",
-          `${contract.address}_${tokenId}`,
-          "Error:"
-        );
+      error => {
+        console.error('[From URI] Caught for slug:', `${contract.address}_${tokenId}`, 'Error:');
         console.error(error);
 
         throw error;
@@ -111,9 +100,9 @@ const getMetadataFromUri = async (contract, tokenId) => {
 const getBCDNetwork = (chainId) => {
   switch (chainId) {
     case ChainIds.MAINNET:
-      return "mainnet";
+      return 'mainnet';
     case ChainIds.ITHACANET2:
-      return "ghostnet";
+      return 'ghostnet';
     default:
       return undefined;
   }
@@ -124,28 +113,25 @@ const getTokenMetadataFromOffchainView = async (contract, tokenId, chainId) => {
 
   if (!bcdNetwork) return null;
 
-  const tzip16MetadataView = await getTzip16MetadataView(contract).catch(
-    (error) => void console.error(error)
-  );
+  const tzip16MetadataView = await getTzip16MetadataView(contract).catch(error => void console.error(error));
   const implementation = tzip16MetadataView?.implementations?.[0];
 
   if (!implementation) return null;
 
-  console.warn("Trying to call token_metadata view via BCD...");
+  console.warn('Trying to call token_metadata view via BCD...');
   const { data: bcdResponseData } = await retry(
-    () =>
-      axios.post(
-        `https://api.better-call.dev/v1/contract/${bcdNetwork}/${contract.address}/views/execute`,
-        {
-          data: {
-            "@nat_1": tokenId,
-          },
-          implementation: 0,
-          kind: "off-chain",
-          name: "token_metadata",
-          view: implementation,
-        }
-      ),
+    () => axios.post(
+      `https://api.better-call.dev/v1/contract/${bcdNetwork}/${contract.address}/views/execute`,
+      {
+        data: {
+          '@nat_1': tokenId
+        },
+        implementation: 0,
+        kind: 'off-chain',
+        name: 'token_metadata',
+        view: implementation
+      }
+    ),
     {
       retries: 1,
       minTimeout: 0,
@@ -160,9 +146,7 @@ const getTokenMetadataFromOffchainView = async (contract, tokenId, chainId) => {
 
   if (!tokenInfo) return null;
 
-  return Object.fromEntries(
-    tokenInfo.children.map(({ name, value }) => [name, value])
-  );
+  return Object.fromEntries(tokenInfo.children.map(({ name, value }) => [name, value]));
 };
 
 async function getTokenMetadata(contractAddress, tokenId = 0) {
@@ -193,49 +177,32 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
     const standard = detectTokenStandard(contract);
 
-    const tzip12Metadata = await getTzip12Metadata(contract, tokenId).catch(
-      () => null
-    );
+    const tzip12Metadata = await getTzip12Metadata(contract, tokenId).catch(() => null);
     // TODO: Parallelize. Note, might need to wrap in retry the following call.
     //       As it is now using cached data from the previous one.
-    const metadataFromUri = await getMetadataFromUri(contract, tokenId).catch(
-      () => null
-    );
+    const metadataFromUri = await getMetadataFromUri(contract, tokenId).catch(() => null);
 
     let rawMetadata = { ...metadataFromUri, ...tzip12Metadata };
 
     if (!isMetadataUsable(rawMetadata)) {
-      consola.info(
-        `Looking for token_metadata off-chain view, slug=${contractAddress}_${tokenId} ...`
-      );
+      consola.info(`Looking for token_metadata off-chain view, slug=${contractAddress}_${tokenId} ...`);
 
       const chainId = await getChainId();
-      rawMetadata = await getTokenMetadataFromOffchainView(
-        contract,
-        tokenId,
-        chainId
-      ).catch((error) => {
+      rawMetadata = await getTokenMetadataFromOffchainView(contract, tokenId, chainId).catch(error => {
         consola.error(error);
       });
     }
 
     if (!isMetadataUsable(rawMetadata)) {
-      consola.info(
-        `Looking for metadata on TZKT, slug=${contractAddress}_${tokenId} ...`
-      );
+      consola.info(`Looking for metadata on TZKT, slug=${contractAddress}_${tokenId} ...`);
 
       const chainId = await getChainId();
-      rawMetadata = await fetchTokenMetadataFromTzkt(
-        chainId,
-        contractAddress,
-        tokenId
-      );
+      rawMetadata = await fetchTokenMetadataFromTzkt(chainId, contractAddress, tokenId);
     }
 
-    assert(isMetadataUsable(rawMetadata));
+    assert( isMetadataUsable(rawMetadata) );
 
-    const thumbnailUri =
-      rawMetadata.thumbnailUri ||
+    const thumbnailUri = rawMetadata.thumbnailUri ||
       rawMetadata.thumbnail_uri ||
       rawMetadata.logo ||
       rawMetadata.icon ||
@@ -264,7 +231,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
     return result;
   } catch (error) {
-    consola.error("No metadata for", slug, "Error:");
+    consola.error('No metadata for', slug, 'Error:');
     console.error(error);
 
     metastore.set(slug, null, ONE_HOUR_IN_MS).catch((err) => {
@@ -276,13 +243,9 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 }
 
 function isMetadataUsable(metadata) {
-  return (
-    metadata &&
-    typeof metadata === "object" &&
-    (Number.isInteger(metadata.decimals) ||
-      typeof metadata.artifactUri === "string") &&
-    (typeof metadata.name === "string" || typeof metadata.symbol === "string")
-  );
+  return metadata && typeof metadata === 'object'
+    && (Number.isInteger(metadata.decimals) || typeof metadata.artifactUri === 'string')
+    && (typeof metadata.name === 'string' || typeof metadata.symbol === 'string');
 }
 
 async function applyImageCacheForDataUris(metadata, slug) {
@@ -309,7 +272,6 @@ class NotFoundTokenMetadata extends Error {
 }
 
 module.exports = pMemoize(getTokenMetadata, {
-  cacheKey: ([contractAddress, tokenId]) =>
-    toTokenSlug(contractAddress, tokenId),
+  cacheKey: ([contractAddress, tokenId]) => toTokenSlug(contractAddress, tokenId),
   maxAge: 1_000 * 60 * 10, // 10 min
 });
