@@ -1,11 +1,14 @@
 const config = require("./config");
+const { getChainId } = require("./tezos");
 
 const callMetastore = async (key, params) => {
+  const chainId = await getChainId();
+
   const authHeaders = config.metastoreAuthSecret
     ? { Authorization: config.metastoreAuthSecret }
     : {};
 
-  const response = await fetch(`${config.metastoreUrl}/${key}`, {
+  const response = await fetch(`${config.metastoreUrl}/${chainId}/${key}`, {
     ...params,
     headers: {
       ...authHeaders,
