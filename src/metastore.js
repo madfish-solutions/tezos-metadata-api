@@ -20,7 +20,7 @@ const set = (key, value, ttl = undefined) =>
   callMetastore(key, {
     method: "POST",
     body: JSON.stringify(value),
-    headers: ttl ? { "X-TTL": ttl } : {},
+    headers: ttl ? { "X-TTL": String(ttl) } : {},
   }).then(response => {
     if (!response.ok) throw new Error(`Metastore error ${response.status}`);
   });
