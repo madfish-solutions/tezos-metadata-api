@@ -164,7 +164,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
   if (cached !== undefined) {
     if (cached === null) {
-      throw new NotFoundTokenMetadata();
+      throw new TokenMetadataError(slug, 'Cached null');
     }
 
     return cached;
@@ -200,7 +200,8 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
       rawMetadata = await fetchTokenMetadataFromTzkt(chainId, contractAddress, tokenId);
     }
 
-    assert( isMetadataUsable(rawMetadata) );
+    if (!isMetadataUsable(rawMetadata))
+      throw `Metadata is not usable: ${JSON.stringify(rawMetadata, null, 2)}`;
 
     const thumbnailUri = rawMetadata.thumbnailUri ||
       rawMetadata.thumbnail_uri ||
@@ -231,14 +232,11 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
     return result;
   } catch (error) {
-    consola.error('No metadata for', slug, 'Error:');
-    console.error(error);
-
     metastore.set(slug, null, ONE_HOUR_IN_MS).catch((err) => {
       console.warn("Failed to set cache", err);
     });
 
-    throw new NotFoundTokenMetadata();
+    throw new TokenMetadataError(slug, undefined, error);
   }
 }
 
@@ -266,12 +264,26 @@ async function applyImageCacheForDataUris(metadata, slug) {
   };
 }
 
-class NotFoundTokenMetadata extends Error {
-  name = "NotFoundTokenMetadata";
-  message = "Metadata for token doesn't found";
+class TokenMetadataError extends Error {
+  name = "TokenMetadataError";
+
+  constructor(slug, reason = 'Not found', error) {
+    super();
+
+    this.title = `[TokenMetadataError] ${reason} for ${slug}.`;
+    this.error = error;
+  }
+
+  log() {
+    consola.error(this.title);
+    if (this.error) console.error('Error:', this.error);
+  }
 }
 
-module.exports = pMemoize(getTokenMetadata, {
-  cacheKey: ([contractAddress, tokenId]) => toTokenSlug(contractAddress, tokenId),
-  maxAge: 1_000 * 60 * 10, // 10 min
-});
+module.exports = {
+  getTokenMetadata: pMemoize(getTokenMetadata, {
+    cacheKey: ([contractAddress, tokenId]) => toTokenSlug(contractAddress, tokenId),
+    maxAge: 1_000 * 60 * 10, // 10 min
+  }),
+  TokenMetadataError,
+};

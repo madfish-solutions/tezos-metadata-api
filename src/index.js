@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const basicAuth = require("express-basic-auth");
 const consola = require("consola");
-const getMetadata = require("./metadata");
+const { getTokenMetadata, TokenMetadataError } = require("./metadata");
 const { port, baPassword, rpcUrl } = require("./config");
 const pjson = require("../package.json");
 const {
@@ -63,8 +63,11 @@ app.get("/metadata/:address/:tokenId", async (req, res) => {
   try {
     let metadata;
     try {
-      metadata = await getMetadata(address, tokenId);
-    } catch {
+      metadata = await getTokenMetadata(address, tokenId);
+    } catch (error) {
+      if (error instanceof TokenMetadataError) error.log();
+      else console.error(error);
+
       metadata = {
         decimals: 0,
         symbol: address,
@@ -97,7 +100,12 @@ app.post("/", async (req, res) => {
           .status(400);
       }
 
-      promises.push(getMetadata(address, tokenId).catch(() => null));
+      promises.push(getTokenMetadata(address, tokenId).catch(error => {
+        if (error instanceof TokenMetadataError) error.log();
+        else console.error(error);
+
+        return null;
+      }));
     }
 
     res.json(await Promise.all(promises));
