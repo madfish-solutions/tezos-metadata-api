@@ -6,4 +6,4 @@ RUN yarn
 COPY . .
 EXPOSE 3000
 
-CMD [ "node", "--experimental-fetch", "src/index.js" ]
+CMD [ "node", "src/index.js" ]
