@@ -22,10 +22,10 @@ class IpfsHttpHandlerStacked extends IpfsHttpHandler {
      * TODO: Dismiss broken gateways in runtime
      */
     this.gateways = [
-      new Gateway('cloudflare-ipfs.com', 10_000),
-      new Gateway('cf-ipfs.com', 10_000),
-      new Gateway('gateway.pinata.cloud', 10_000),
-      // new Gateway('ipfs.eth.aragon.network', 10_000), // Slow, but works (unknown behavior on overload)
+      new Gateway('cloudflare-ipfs.com', 5_000),
+      new Gateway('cf-ipfs.com', 5_000),
+      new Gateway('gateway.pinata.cloud', 5_000),
+      // new Gateway('ipfs.eth.aragon.network', 5_000), // Slow, but works (unknown behavior on overload)
     ];
   }
 
@@ -37,7 +37,7 @@ class IpfsHttpHandlerStacked extends IpfsHttpHandler {
     const abortController = new AbortController();
     setTimeout(() => {
       abortController.abort();
-    }, 120_000);
+    }, 60_000);
 
     return this._createRequest(ipfsPath, abortController);
   }, {
