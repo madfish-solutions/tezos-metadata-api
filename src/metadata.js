@@ -16,13 +16,6 @@ const fetchTokenMetadataFromTzkt = require("./tzkt");
 const { toTokenSlug, parseBoolean, detectTokenStandard } = require("./utils");
 const { getOrUpdateCachedImage } = require("./image-cache");
 
-/** Sometimes Tezos node falsely throws 404 */
-const RPC_RETRY_OPTIONS = {
-  retries: 2,
-  minTimeout: 100,
-  maxTimeout: 100,
-};
-
 const MEMOIZED_CONTRACTS_NUMBER = 1_000;
 
 const ONE_HOUR_IN_SECONDS = 60 * 60;
@@ -38,19 +31,11 @@ const getContractForMetadata = memoizee(
   }
 );
 
-const getTzip12Metadata = async (contract, tokenId) => retry(
-  () => contract.tzip12().getTokenMetadata(tokenId),
-  RPC_RETRY_OPTIONS
-);
-
 const getTzip16MetadataView = memoizee(async (contract) =>
-  retry(() =>
-    contract
-      .tzip16()
-      .getMetadata()
-      .then(({ metadata }) => metadata?.views?.find(view => view.name === 'token_metadata')),
-    RPC_RETRY_OPTIONS,
-  ),
+  contract
+    .tzip16()
+    .getMetadata()
+    .then(({ metadata }) => metadata?.views?.find(view => view.name === 'token_metadata')),
   {
     promise: true,
     maxAge: ONE_HOUR_IN_MS,
@@ -113,7 +98,7 @@ const getTokenMetadataFromOffchainView = async (contract, tokenId, chainId) => {
 
   if (!bcdNetwork) return null;
 
-  const tzip16MetadataView = await getTzip16MetadataView(contract).catch(error => void console.error(error));
+  const tzip16MetadataView = await getTzip16MetadataView(contract);
   const implementation = tzip16MetadataView?.implementations?.[0];
 
   if (!implementation) return null;
@@ -177,10 +162,13 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
 
     const standard = detectTokenStandard(contract);
 
-    const tzip12Metadata = await getTzip12Metadata(contract, tokenId).catch(() => null);
-    // TODO: Parallelize. Note, might need to wrap in retry the following call.
-    //       As it is now using cached data from the previous one.
-    const metadataFromUri = await getMetadataFromUri(contract, tokenId).catch(() => null);
+    // (!) Sometimes Tezos node falsely throws 404.
+    // Retrying would increase search by `timeout * retries` which results
+    // in metadata collection taking too long & client receiving error 524.
+    const [metadataFromUri, tzip12Metadata] = await Promise.all([
+      getMetadataFromUri(contract, tokenId).catch(() => null),
+      contract.tzip12().getTokenMetadata(tokenId).catch(() => null)
+    ]);
 
     let rawMetadata = { ...metadataFromUri, ...tzip12Metadata };
 
@@ -201,7 +189,7 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
     }
 
     if (!isMetadataUsable(rawMetadata))
-      throw `Metadata is not usable: ${JSON.stringify(rawMetadata, null, 2)}`;
+      throw new MetadataNotUsableError(slug, rawMetadata);
 
     const thumbnailUri = rawMetadata.thumbnailUri ||
       rawMetadata.thumbnail_uri ||
@@ -227,14 +215,15 @@ async function getTokenMetadata(contractAddress, tokenId = 0) {
     );
 
     metastore.set(slug, result).catch((err) => {
-      console.warn("Failed to set cache", err);
+      console.warn(`Failed to set cache for ${slug}:`, err);
     });
 
     return result;
   } catch (error) {
-    metastore.set(slug, null, ONE_HOUR_IN_MS).catch((err) => {
-      console.warn("Failed to set cache", err);
-    });
+    if (error instanceof MetadataNotUsableError)
+      metastore.set(slug, null, ONE_HOUR_IN_MS).catch((err) => {
+        console.warn(`Failed to cache null for ${slug}`, err);
+      });
 
     throw new TokenMetadataError(slug, undefined, error);
   }
@@ -276,7 +265,17 @@ class TokenMetadataError extends Error {
 
   log() {
     consola.error(this.title);
-    if (this.error) console.error('Error:', this.error);
+    if (this.error) console.error(this.error);
+  }
+}
+
+class MetadataNotUsableError extends Error {
+  name = 'MetadataNotUsableError';
+
+  constructor(slug, metadata) {
+    super();
+
+    this.message = `Metadata for slug ${slug} is not usable: ${JSON.stringify(metadata, null, 2)}`;
   }
 }
 
