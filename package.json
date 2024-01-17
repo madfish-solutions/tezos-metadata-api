@@ -6,11 +6,10 @@
   "description": "Metadata API for Tezos-based tokens, supporting both FA1.2 and FA2 standards",
   "license": "MIT",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node --experimental-fetch src/index.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.304.0",
-    "@taquito/michel-codec": "15.0.1",
     "@taquito/taquito": "15.0.1",
     "@taquito/tzip12": "15.0.1",
     "@taquito/tzip16": "15.0.1",
@@ -22,8 +21,8 @@
     "data-uri-to-buffer": "^3.0.1",
     "express": "^4.17.3",
     "express-basic-auth": "^1.2.0",
-    "ioredis": "^4.27.9",
     "lokijs": "^1.5.12",
+    "memoizee": "^0.4.15",
     "p-memoize": "^4.0.1",
     "sharp": "^0.32.0"
   }

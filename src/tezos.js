@@ -1,40 +1,56 @@
 const { TezosToolkit, MichelCodecPacker, ChainIds } = require("@taquito/taquito");
+const { RpcClient, RpcClientCache } = require('@taquito/rpc');
 const {
   Tzip16Module,
-  HttpHandler,
   TezosStorageHandler,
-  IpfsHttpHandler,
   MetadataProvider,
 } = require("@taquito/tzip16");
 const { Tzip12Module } = require("@taquito/tzip12");
 const consola = require("consola");
-const memoize = require("p-memoize");
+const pMemoize = require("p-memoize");
 
 const LambdaViewSigner = require("./signer");
 const { rpcUrl } = require("./config");
+const IpfsHttpHandler = require("./ipfs-handler-stacked");
+const HttpHandlerWithIpfs = require("./http-handler-with-ipfs");
+const HttpBackend = require("./http-backend");
 
-const michelEncoder = new MichelCodecPacker();
-const metadataProvider = new MetadataProvider(
-  new Map([
-    ["http", new HttpHandler()],
-    ["https", new HttpHandler()],
-    ["tezos-storage", new TezosStorageHandler()],
-    ["ipfs", new IpfsHttpHandler("cloudflare-ipfs.com")],
-  ])
+const Tezos = new TezosToolkit(
+  new RpcClientCache(
+    new RpcClient(rpcUrl, undefined, new HttpBackend()),
+    60_000
+  )
 );
 
-const Tezos = new TezosToolkit(rpcUrl);
+const tezosContext = Tezos._context;
+
+const ipfsHandler = new IpfsHttpHandler();
+const httpHandler = new HttpHandlerWithIpfs(ipfsHandler);
+
+const metadataProvider = new MetadataProvider(
+  new Map([
+    ["http", httpHandler],
+    ["https", httpHandler],
+    ["tezos-storage", new TezosStorageHandler()],
+    ["ipfs", ipfsHandler],
+  ])
+);
 
 Tezos.addExtension(new Tzip16Module(metadataProvider));
 Tezos.addExtension(new Tzip12Module(metadataProvider));
 Tezos.setSignerProvider(new LambdaViewSigner());
-Tezos.setPackerProvider(michelEncoder);
+Tezos.setPackerProvider(new MichelCodecPacker());
 
-const getChainId = memoize(async () => {
+const getChainId = pMemoize(async () => {
   const chainId = await Tezos.rpc.getChainId();
   consola.info('Chain ID = ', chainId);
 
   return chainId;
+});
+
+getChainId().catch(err => {
+  console.error('Failed to get Chain ID:', err);
+  process.exit(1);
 });
 
 const KnownChainIDs = {
@@ -45,4 +61,10 @@ const KnownChainIDs = {
   T4L3NT_TEST: 'NetXX7Tz1sK8JTa'
 };
 
-module.exports = { Tezos, KnownChainIDs, getChainId };
+module.exports = {
+  Tezos,
+  tezosContext,
+  KnownChainIDs,
+  metadataProvider,
+  getChainId
+};

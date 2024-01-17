@@ -11,16 +11,17 @@ function isValidContract(address) {
   return validateContractAddress(address) === 3;
 }
 
-function toTokenSlug(address, tokenId = 0) {
-  return `${address}_${new BigNumber(tokenId).toFixed()}`;
+function toTokenSlug(address, tokenId = '0') {
+  return `${address}_${String(tokenId)}`;
 }
 
 function fromTokenSlug(slug) {
   const [address, tokenIdStr] = slug.split("_");
-  return { address, tokenId: new BigNumber(tokenIdStr ?? 0) };
+  return { address, tokenId: tokenIdStr ?? '0' };
 }
 
 function parseBoolean(value) {
+  if (typeof value === 'boolean') return value;
   if (value === "true") return true;
   if (value === "false") return false;
 }

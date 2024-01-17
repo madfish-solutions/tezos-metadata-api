@@ -23,22 +23,14 @@ async function getOrUpdateCachedImage(uri, tag) {
     return uri;
   }
 
-  let buffer = await dataUriToBuffer(uri);
-  if (buffer.type === "image/svg+xml") {
-    try {
-      buffer = await sharp(buffer).png().toBuffer();
-      buffer.type = "image/png";
-    } catch (err) {
-      console.error("Failed to convert SVG to PNG", err);
-      return getImgUriFallback(uri, 'FAILED_TO_PREPARE_IMAGE');
-    }
-  }
+  const mimeType = uri.substring(5, uri.indexOf(';'));
 
-  const hash = crypto.createHash("sha256").update(buffer).digest("hex");
-  const fileExtension = getSupportedExtensionFromMime(buffer.type);
+  const fileExtension = getSupportedExtensionFromMime(mimeType);
   if (!fileExtension) {
     return getImgUriFallback(uri, 'UNSUPPORTED_EXTENSION');
   }
+
+  const hash = crypto.createHash("sha256").update(uri).digest('hex');
 
   const key = `${hash}.${fileExtension}`;
 
@@ -54,6 +46,17 @@ async function getOrUpdateCachedImage(uri, tag) {
   } catch (err) {
     if (err.$metadata.httpStatusCode !== 404) {
       console.error("Cached image existance check failed", err);
+    }
+  }
+
+  let buffer = dataUriToBuffer(uri);
+  if (buffer.type === "image/svg+xml") {
+    try {
+      buffer = await sharp(buffer).png().toBuffer();
+      buffer.type = "image/png";
+    } catch (err) {
+      console.error("Failed to convert SVG to PNG", err);
+      return getImgUriFallback(uri, 'FAILED_TO_PREPARE_IMAGE');
     }
   }
 
