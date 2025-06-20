@@ -92,7 +92,7 @@ function getSupportedExtensionFromMime(mimeType) {
     case "image/gif":
       return "gif";
     case "image/svg+xml":
-      return "svg";
+      return "png";
   }
 }
 
